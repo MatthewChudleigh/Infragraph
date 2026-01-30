@@ -1,0 +1,252 @@
+namespace Infragraph.Core.Graph;
+
+using Infragraph.Common.Abstractions;
+using Infragraph.Common.Configuration;
+using Infragraph.Common.Models.Domain;
+using Infragraph.Common.Models.Graph;
+
+/// <summary>
+/// Builds the infrastructure graph from resources and relationships.
+/// </summary>
+public sealed class GraphBuilder : IGraphBuilder
+{
+    private readonly IEnumerable<IGroupingStrategy> _groupingStrategies;
+
+    public GraphBuilder(IEnumerable<IGroupingStrategy> groupingStrategies)
+    {
+        _groupingStrategies = groupingStrategies.OrderBy(s => s.Priority);
+    }
+
+    public InfraGraph BuildGraph(
+        IEnumerable<AwsResource> resources,
+        IEnumerable<ResourceRelationship> relationships,
+        DiagramOptions options)
+    {
+        var resourceList = resources.ToList();
+        var relationshipList = relationships.ToList();
+
+        // Build nodes (handle potential duplicates)
+        var nodes = BuildNodes(resourceList, options);
+        var nodeIndex = new Dictionary<string, GraphNode>();
+        foreach (var node in nodes)
+        {
+            nodeIndex.TryAdd(node.Id, node);
+        }
+
+        // Build edges (only for nodes that exist in the graph)
+        var edges = BuildEdges(relationshipList, nodeIndex, options);
+
+        // Filter isolated nodes if configured
+        if (!options.ShowIsolatedNodes)
+        {
+            var connectedNodeIds = new HashSet<string>();
+            foreach (var edge in edges)
+            {
+                connectedNodeIds.Add(edge.Source);
+                connectedNodeIds.Add(edge.Target);
+            }
+
+            nodes = nodes.Where(n => connectedNodeIds.Contains(n.Id)).ToList();
+        }
+
+        // Apply grouping strategies
+        var groups = ApplyGrouping(nodes, edges, options);
+
+        // Remove nodes that are now represented as groups (VPCs, Subnets)
+        // These resources are containers, not individual nodes
+        var groupResourceIds = groups
+            .Where(g => g.Data.ContainsKey("resourceId"))
+            .Select(g => g.Data["resourceId"]?.ToString())
+            .Where(id => id != null)
+            .ToHashSet();
+
+        if (groupResourceIds.Count > 0)
+        {
+            nodes = nodes.Where(n => !groupResourceIds.Contains(n.Id)).ToList();
+
+            // Also remove edges that connect to/from these group resources
+            edges = edges.Where(e =>
+                !groupResourceIds.Contains(e.Source) &&
+                !groupResourceIds.Contains(e.Target)).ToList();
+        }
+
+        // Build metadata
+        var metadata = BuildMetadata(resourceList, relationshipList, nodes, options);
+
+        return new InfraGraph
+        {
+            Nodes = nodes,
+            Edges = edges,
+            Groups = groups,
+            Metadata = metadata
+        };
+    }
+
+    private static List<GraphNode> BuildNodes(List<AwsResource> resources, DiagramOptions options)
+    {
+        var nodes = new List<GraphNode>();
+
+        foreach (var resource in resources)
+        {
+            // Apply type filters
+            if (options.IncludeTypes.Count > 0 && !options.IncludeTypes.Contains(resource.Type))
+                continue;
+
+            if (options.ExcludeTypes.Contains(resource.Type))
+                continue;
+
+            // Apply region filters
+            if (options.IncludeRegions.Count > 0 &&
+                !string.IsNullOrEmpty(resource.Region) &&
+                !options.IncludeRegions.Contains(resource.Region))
+                continue;
+
+            var node = new GraphNode
+            {
+                Id = resource.Id,
+                Label = resource.DisplayName,
+                ResourceType = resource.Type,
+                Service = resource.ServiceName,
+                Width = options.DefaultNodeWidth,
+                Height = options.DefaultNodeHeight,
+                Data = new Dictionary<string, object>
+                {
+                    ["arn"] = resource.Arn ?? resource.Id,
+                    ["region"] = resource.Region ?? "global",
+                    ["tags"] = resource.Tags
+                }
+            };
+
+            nodes.Add(node);
+        }
+
+        return nodes;
+    }
+
+    private static List<GraphEdge> BuildEdges(
+        List<ResourceRelationship> relationships,
+        Dictionary<string, GraphNode> nodeIndex,
+        DiagramOptions options)
+    {
+        var edges = new List<GraphEdge>();
+        var seenEdges = new HashSet<string>();
+
+        foreach (var rel in relationships)
+        {
+            // Only include edges where both nodes exist
+            if (!nodeIndex.ContainsKey(rel.SourceId) || !nodeIndex.ContainsKey(rel.TargetId))
+                continue;
+
+            // Skip duplicate edges (same source, target, and type)
+            var edgeKey = $"{rel.SourceId}|{rel.TargetId}|{rel.RelationshipType}";
+            if (!seenEdges.Add(edgeKey))
+                continue;
+
+            var edge = new GraphEdge
+            {
+                Id = $"e-{edges.Count}",
+                Source = rel.SourceId,
+                Target = rel.TargetId,
+                Label = rel.Label,
+                RelationshipType = rel.RelationshipType,
+                Data = new Dictionary<string, object>
+                {
+                    ["relationshipType"] = rel.RelationshipType.ToString()
+                }
+            };
+
+            edges.Add(edge);
+        }
+
+        return edges;
+    }
+
+    private List<NodeGroup> ApplyGrouping(
+        List<GraphNode> nodes,
+        List<GraphEdge> edges,
+        DiagramOptions options)
+    {
+        var allGroups = new List<NodeGroup>();
+
+        foreach (var strategy in _groupingStrategies)
+        {
+            if (!options.GroupingStrategies.Contains(strategy.GroupingType))
+                continue;
+
+            var groups = strategy.GroupNodes(nodes, edges).ToList();
+            allGroups.AddRange(groups);
+
+            // Update node parent IDs based on grouping (skip affinity hints for now)
+            foreach (var group in groups.Where(g => g.GroupType != "affinity-hint"))
+            {
+                foreach (var nodeId in group.NodeIds)
+                {
+                    var node = nodes.FirstOrDefault(n => n.Id == nodeId);
+                    if (node != null && node.ParentId == null)
+                    {
+                        node.ParentId = group.Id;
+                    }
+                }
+            }
+        }
+
+        // Process affinity hints: move nodes into the same group as their target
+        var affinityHints = allGroups.Where(g => g.GroupType == "affinity-hint").ToList();
+        foreach (var hint in affinityHints)
+        {
+            if (!hint.Data.TryGetValue("affinityTarget", out var targetObj) || targetObj is not string targetId)
+                continue;
+
+            // Find the target node and its parent group
+            var targetNode = nodes.FirstOrDefault(n => n.Id == targetId);
+            if (targetNode?.ParentId == null)
+                continue;
+
+            // Find the parent group of the target
+            var parentGroup = allGroups.FirstOrDefault(g => g.Id == targetNode.ParentId);
+            if (parentGroup == null)
+                continue;
+
+            // Move affinity nodes into the same parent group
+            foreach (var nodeId in hint.NodeIds)
+            {
+                var node = nodes.FirstOrDefault(n => n.Id == nodeId);
+                if (node != null)
+                {
+                    node.ParentId = parentGroup.Id;
+
+                    // Add to parent group's node list if not already there
+                    if (!parentGroup.NodeIds.Contains(nodeId))
+                    {
+                        parentGroup.NodeIds.Add(nodeId);
+                    }
+                }
+            }
+        }
+
+        // Filter out affinity hint groups from final output
+        return allGroups.Where(g => g.GroupType != "affinity-hint").ToList();
+    }
+
+    private static GraphMetadata BuildMetadata(
+        List<AwsResource> allResources,
+        List<ResourceRelationship> allRelationships,
+        List<GraphNode> includedNodes,
+        DiagramOptions options)
+    {
+        return new GraphMetadata
+        {
+            TotalResources = allResources.Count,
+            IncludedResources = includedNodes.Count,
+            TotalRelationships = allRelationships.Count,
+            ResourceTypes = allResources.Select(r => r.Type).Distinct().OrderBy(t => t).ToList(),
+            Regions = allResources
+                .Where(r => !string.IsNullOrEmpty(r.Region))
+                .Select(r => r.Region!)
+                .Distinct()
+                .OrderBy(r => r)
+                .ToList(),
+            GeneratedAt = DateTimeOffset.UtcNow
+        };
+    }
+}
