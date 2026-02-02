@@ -1,7 +1,7 @@
-namespace Infragraph.Core.Relationships.Extractors;
+using Infragraph.Common.Abstractions;
+using Infragraph.Common.Models.Domain;
 
-using Common.Abstractions;
-using Common.Models.Domain;
+namespace Infragraph.Core.Relationships;
 
 /// <summary>
 /// Extracts security group reference relationships.
@@ -11,8 +11,8 @@ public sealed class SecurityGroupExtractor : IRelationshipExtractor
     public IEnumerable<string> SupportedResourceTypes => ["ec2.securitygroup"];
 
     public IEnumerable<ResourceRelationship> ExtractRelationships(
-        AwsResource source,
-        IReadOnlyDictionary<string, AwsResource> index)
+        IReadOnlyDictionary<string, AwsResource> index,
+        AwsResource source)
     {
         if (source is not SecurityGroupResource sg)
             yield break;

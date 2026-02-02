@@ -24,12 +24,7 @@ internal sealed class LoadBalancerHandler : IResourceTypeHandler
             }
         }
 
-        var securityGroups = new List<string>();
-        if (data.TryGetProperty("SecurityGroups", out var sgs) && sgs.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var sg in sgs.EnumerateArray())
-                securityGroups.Add(sg.GetString() ?? "");
-        }
+        var securityGroups = ExtractSecurityGroups(data);
 
         return new LoadBalancerResource
         {
@@ -53,6 +48,17 @@ internal sealed class LoadBalancerHandler : IResourceTypeHandler
         };
     }
 
+    private static List<string> ExtractSecurityGroups(JsonElement data)
+    {
+        var securityGroups = new List<string>();
+        if (!data.TryGetProperty("SecurityGroups", out var sgs) || sgs.ValueKind != JsonValueKind.Array)
+            return securityGroups;
+        
+        securityGroups.AddRange(sgs.EnumerateArray().Select(sg => sg.GetString() ?? ""));
+
+        return securityGroups;
+    }
+
     private static string? GetString(JsonElement data, string prop) =>
         data.TryGetProperty(prop, out var val) && val.ValueKind == JsonValueKind.String ? val.GetString() : null;
 
@@ -68,12 +74,7 @@ internal sealed class TargetGroupHandler : IResourceTypeHandler
         var data = resource.Data;
         var tags = ResourceModelFactory.ExtractTags(data);
 
-        var lbArns = new List<string>();
-        if (data.TryGetProperty("LoadBalancerArns", out var lbs) && lbs.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var lb in lbs.EnumerateArray())
-                lbArns.Add(lb.GetString() ?? "");
-        }
+        var lbArns = ExtractLbArns(data);
 
         return new TargetGroupResource
         {
@@ -95,6 +96,17 @@ internal sealed class TargetGroupHandler : IResourceTypeHandler
         };
     }
 
+    private static List<string> ExtractLbArns(JsonElement data)
+    {
+        var lbArns = new List<string>();
+        if (!data.TryGetProperty("LoadBalancerArns", out var lbs) || lbs.ValueKind != JsonValueKind.Array)
+            return lbArns;
+        
+        lbArns.AddRange(lbs.EnumerateArray().Select(lb => lb.GetString() ?? ""));
+
+        return lbArns;
+    }
+
     private static string? GetString(JsonElement data, string prop) =>
         data.TryGetProperty(prop, out var val) && val.ValueKind == JsonValueKind.String ? val.GetString() : null;
 
@@ -108,19 +120,7 @@ internal sealed class ListenerHandler : IResourceTypeHandler
     {
         var data = resource.Data;
 
-        var actions = new List<ListenerAction>();
-        if (data.TryGetProperty("DefaultActions", out var acts) && acts.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var a in acts.EnumerateArray())
-            {
-                actions.Add(new ListenerAction
-                {
-                    Type = GetString(a, "Type"),
-                    TargetGroupArn = GetString(a, "TargetGroupArn"),
-                    Order = GetIntNullable(a, "Order")
-                });
-            }
-        }
+        var actions = ExtractListenerActions(data);
 
         return new ListenerResource
         {
@@ -135,6 +135,25 @@ internal sealed class ListenerHandler : IResourceTypeHandler
             Protocol = GetString(data, "Protocol"),
             DefaultActions = actions
         };
+    }
+
+    private static List<ListenerAction> ExtractListenerActions(JsonElement data)
+    {
+        var actions = new List<ListenerAction>();
+        if (!data.TryGetProperty("DefaultActions", out var acts) || acts.ValueKind != JsonValueKind.Array)
+            return actions;
+        
+        foreach (var a in acts.EnumerateArray())
+        {
+            actions.Add(new ListenerAction
+            {
+                Type = GetString(a, "Type"),
+                TargetGroupArn = GetString(a, "TargetGroupArn"),
+                Order = GetIntNullable(a, "Order")
+            });
+        }
+
+        return actions;
     }
 
     private static string? GetString(JsonElement data, string prop) =>

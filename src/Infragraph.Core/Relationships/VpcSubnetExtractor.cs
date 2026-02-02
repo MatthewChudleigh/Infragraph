@@ -1,7 +1,7 @@
-namespace Infragraph.Core.Relationships.Extractors;
+using Infragraph.Common.Abstractions;
+using Infragraph.Common.Models.Domain;
 
-using Common.Abstractions;
-using Common.Models.Domain;
+namespace Infragraph.Core.Relationships;
 
 /// <summary>
 /// Extracts VPC-to-Subnet containment relationships and subnet-to-VPC belonging relationships.
@@ -11,8 +11,8 @@ public sealed class VpcSubnetExtractor : IRelationshipExtractor
     public IEnumerable<string> SupportedResourceTypes => ["ec2.vpc", "ec2.subnet"];
 
     public IEnumerable<ResourceRelationship> ExtractRelationships(
-        AwsResource source,
-        IReadOnlyDictionary<string, AwsResource> index)
+        IReadOnlyDictionary<string, AwsResource> index,
+        AwsResource source)
     {
         switch (source)
         {

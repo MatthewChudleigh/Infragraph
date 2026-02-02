@@ -7,6 +7,14 @@ using Common.Models.Former2;
 using ResourceTypes;
 
 /// <summary>
+/// Interface for resource type-specific handling.
+/// </summary>
+internal interface IResourceTypeHandler
+{
+    AwsResource CreateResource(Former2Resource resource);
+}
+
+/// <summary>
 /// Factory for creating typed AWS resource models.
 /// </summary>
 public sealed class ResourceModelFactory : IResourceModelFactory
@@ -162,12 +170,4 @@ public sealed class ResourceModelFactory : IResourceModelFactory
         var segments = id.Split(':');
         return segments.Length > 0 ? segments[^1].Split('/')[^1] : id;
     }
-}
-
-/// <summary>
-/// Interface for resource type-specific handling.
-/// </summary>
-internal interface IResourceTypeHandler
-{
-    AwsResource CreateResource(Former2Resource resource);
 }

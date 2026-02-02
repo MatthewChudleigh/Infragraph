@@ -14,8 +14,8 @@ public interface IRelationshipExtractor
     /// <param name="index">An index of all resources by their ID.</param>
     /// <returns>The extracted relationships.</returns>
     IEnumerable<ResourceRelationship> ExtractRelationships(
-        AwsResource source,
-        IReadOnlyDictionary<string, AwsResource> index);
+        IReadOnlyDictionary<string, AwsResource> index,
+        AwsResource source);
 
     /// <summary>
     /// The resource types this extractor supports.

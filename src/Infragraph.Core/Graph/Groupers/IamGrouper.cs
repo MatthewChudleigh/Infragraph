@@ -1,8 +1,8 @@
-namespace Infragraph.Core.Layout.Groupers;
-
-using Common.Abstractions;
-using Common.Models.Domain;
+using Infragraph.Common.Abstractions;
+using Infragraph.Common.Models.Domain;
 using Infragraph.Common.Models.Graph;
+
+namespace Infragraph.Core.Graph.Groupers;
 
 /// <summary>
 /// Groups IAM hierarchies: instance profiles with their roles, roles with their policies.

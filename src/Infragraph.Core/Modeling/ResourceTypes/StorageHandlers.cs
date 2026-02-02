@@ -37,29 +37,8 @@ internal sealed class RdsInstanceHandler : IResourceTypeHandler
         var data = resource.Data;
         var tags = ResourceModelFactory.ExtractTags(data);
 
-        var subnetIds = new List<string>();
-        var securityGroups = new List<string>();
-
-        if (data.TryGetProperty("DBSubnetGroup", out var subnetGroup))
-        {
-            if (subnetGroup.TryGetProperty("Subnets", out var subs) && subs.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var s in subs.EnumerateArray())
-                {
-                    if (s.TryGetProperty("SubnetIdentifier", out var sid))
-                        subnetIds.Add(sid.GetString() ?? "");
-                }
-            }
-        }
-
-        if (data.TryGetProperty("VpcSecurityGroups", out var sgs) && sgs.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var sg in sgs.EnumerateArray())
-            {
-                if (sg.TryGetProperty("VpcSecurityGroupId", out var sgid))
-                    securityGroups.Add(sgid.GetString() ?? "");
-            }
-        }
+        var subnetIds = ExtractSubnetIds(data);
+        var securityGroups = ExtractSecurityGroups(data);
 
         return new RdsInstanceResource
         {
@@ -80,6 +59,39 @@ internal sealed class RdsInstanceHandler : IResourceTypeHandler
             SecurityGroupIds = securityGroups,
             Status = GetString(data, "DBInstanceStatus")
         };
+    }
+
+    private static List<string> ExtractSecurityGroups(JsonElement data)
+    {
+        var securityGroups = new List<string>();
+        if (!data.TryGetProperty("VpcSecurityGroups", out var sgs) || sgs.ValueKind != JsonValueKind.Array)
+            return securityGroups;
+        
+        foreach (var sg in sgs.EnumerateArray())
+        {
+            if (sg.TryGetProperty("VpcSecurityGroupId", out var sgid))
+                securityGroups.Add(sgid.GetString() ?? "");
+        }
+
+        return securityGroups;
+    }
+
+    private static List<string> ExtractSubnetIds(JsonElement data)
+    {
+        var subnetIds = new List<string>();
+
+        if (!data.TryGetProperty("DBSubnetGroup", out var subnetGroup) 
+            || !subnetGroup.TryGetProperty("Subnets", out var subs) 
+            || subs.ValueKind != JsonValueKind.Array) 
+            return subnetIds;
+
+        foreach (var s in subs.EnumerateArray())
+        {
+            if (s.TryGetProperty("SubnetIdentifier", out var sid))
+                subnetIds.Add(sid.GetString() ?? "");
+        }
+
+        return subnetIds;
     }
 
     private static string? GetString(JsonElement data, string prop) =>

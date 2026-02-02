@@ -1,7 +1,7 @@
-namespace Infragraph.Core.Relationships.Extractors;
+using Infragraph.Common.Abstractions;
+using Infragraph.Common.Models.Domain;
 
-using Common.Abstractions;
-using Common.Models.Domain;
+namespace Infragraph.Core.Relationships;
 
 /// <summary>
 /// Extracts ELB/ALB relationships (load balancer, target group, listener).
@@ -12,8 +12,8 @@ public sealed class ElbTargetGroupExtractor : IRelationshipExtractor
         ["elbv2.loadbalancer", "elbv2.targetgroup", "elbv2.listener", "elbv2.loadbalancerlistener"];
 
     public IEnumerable<ResourceRelationship> ExtractRelationships(
-        AwsResource source,
-        IReadOnlyDictionary<string, AwsResource> index)
+        IReadOnlyDictionary<string, AwsResource> index,
+        AwsResource source)
     {
         switch (source)
         {

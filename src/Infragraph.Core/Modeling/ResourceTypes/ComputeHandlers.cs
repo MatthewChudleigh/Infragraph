@@ -10,16 +10,7 @@ internal sealed class Ec2InstanceHandler : IResourceTypeHandler
     {
         var data = resource.Data;
         var tags = ResourceModelFactory.ExtractTags(data);
-
-        var sgIds = new List<string>();
-        if (data.TryGetProperty("SecurityGroups", out var sgs) && sgs.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var sg in sgs.EnumerateArray())
-            {
-                if (sg.TryGetProperty("GroupId", out var gid))
-                    sgIds.Add(gid.GetString() ?? "");
-            }
-        }
+        var sgIds = ExtractSecurityGroupIds(data);
 
         return new Ec2InstanceResource
         {
@@ -41,6 +32,21 @@ internal sealed class Ec2InstanceHandler : IResourceTypeHandler
         };
     }
 
+    private static List<string> ExtractSecurityGroupIds(JsonElement data)
+    {
+        var sgIds = new List<string>();
+        if (!data.TryGetProperty("SecurityGroups", out var sgs) || sgs.ValueKind != JsonValueKind.Array) 
+            return sgIds;
+        
+        foreach (var sg in sgs.EnumerateArray())
+        {
+            if (sg.TryGetProperty("GroupId", out var gid))
+                sgIds.Add(gid.GetString() ?? "");
+        }
+
+        return sgIds;
+    }
+
     private static string? GetString(JsonElement data, string prop) =>
         data.TryGetProperty(prop, out var val) && val.ValueKind == JsonValueKind.String ? val.GetString() : null;
 
@@ -55,20 +61,7 @@ internal sealed class EbsVolumeHandler : IResourceTypeHandler
     {
         var data = resource.Data;
         var tags = ResourceModelFactory.ExtractTags(data);
-
-        var attachments = new List<VolumeAttachment>();
-        if (data.TryGetProperty("Attachments", out var atts) && atts.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var att in atts.EnumerateArray())
-            {
-                attachments.Add(new VolumeAttachment
-                {
-                    InstanceId = GetString(att, "InstanceId"),
-                    Device = GetString(att, "Device"),
-                    State = GetString(att, "State")
-                });
-            }
-        }
+        var attachments = ExtractVolumeAttachments(data);
 
         return new EbsVolumeResource
         {
@@ -86,6 +79,25 @@ internal sealed class EbsVolumeHandler : IResourceTypeHandler
             Encrypted = GetBool(data, "Encrypted"),
             Attachments = attachments
         };
+    }
+
+    private static List<VolumeAttachment> ExtractVolumeAttachments(JsonElement data)
+    {
+        var attachments = new List<VolumeAttachment>();
+        if (!data.TryGetProperty("Attachments", out var atts) || atts.ValueKind != JsonValueKind.Array)
+            return attachments;
+        
+        foreach (var att in atts.EnumerateArray())
+        {
+            attachments.Add(new VolumeAttachment
+            {
+                InstanceId = GetString(att, "InstanceId"),
+                Device = GetString(att, "Device"),
+                State = GetString(att, "State")
+            });
+        }
+
+        return attachments;
     }
 
     private static string? GetString(JsonElement data, string prop) =>
@@ -135,21 +147,7 @@ internal sealed class EcsServiceHandler : IResourceTypeHandler
     {
         var data = resource.Data;
         var tags = ResourceModelFactory.ExtractTags(data);
-
-        var loadBalancers = new List<LoadBalancerAttachment>();
-        if (data.TryGetProperty("loadBalancers", out var lbs) && lbs.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var lb in lbs.EnumerateArray())
-            {
-                loadBalancers.Add(new LoadBalancerAttachment
-                {
-                    TargetGroupArn = GetString(lb, "targetGroupArn"),
-                    ContainerName = GetString(lb, "containerName"),
-                    ContainerPort = GetIntNullable(lb, "containerPort")
-                });
-            }
-        }
-
+        var loadBalancers = ExtractLoadBalancers(data);
         var (subnets, securityGroups) = ParseNetworkConfig(data);
 
         return new EcsServiceResource
@@ -176,24 +174,42 @@ internal sealed class EcsServiceHandler : IResourceTypeHandler
         };
     }
 
+    private static List<LoadBalancerAttachment> ExtractLoadBalancers(JsonElement data)
+    {
+        var loadBalancers = new List<LoadBalancerAttachment>();
+        if (!data.TryGetProperty("loadBalancers", out var lbs) || lbs.ValueKind != JsonValueKind.Array)
+            return loadBalancers;
+        
+        foreach (var lb in lbs.EnumerateArray())
+        {
+            loadBalancers.Add(new LoadBalancerAttachment
+            {
+                TargetGroupArn = GetString(lb, "targetGroupArn"),
+                ContainerName = GetString(lb, "containerName"),
+                ContainerPort = GetIntNullable(lb, "containerPort")
+            });
+        }
+
+        return loadBalancers;
+    }
+
     private static (List<string>, List<string>) ParseNetworkConfig(JsonElement data)
     {
         var subnets = new List<string>();
         var securityGroups = new List<string>();
 
-        if (data.TryGetProperty("networkConfiguration", out var nc) &&
-            nc.TryGetProperty("awsvpcConfiguration", out var vpc))
+        if (!data.TryGetProperty("networkConfiguration", out var nc) ||
+            !nc.TryGetProperty("awsvpcConfiguration", out var vpc)) 
+            return (subnets, securityGroups);
+        
+        if (vpc.TryGetProperty("subnets", out var subs) && subs.ValueKind == JsonValueKind.Array)
         {
-            if (vpc.TryGetProperty("subnets", out var subs) && subs.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var s in subs.EnumerateArray())
-                    subnets.Add(s.GetString() ?? "");
-            }
-            if (vpc.TryGetProperty("securityGroups", out var sgs) && sgs.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var sg in sgs.EnumerateArray())
-                    securityGroups.Add(sg.GetString() ?? "");
-            }
+            subnets.AddRange(subs.EnumerateArray().Select(s => s.GetString() ?? ""));
+        }
+        
+        if (vpc.TryGetProperty("securityGroups", out var sgs) && sgs.ValueKind == JsonValueKind.Array)
+        {
+            securityGroups.AddRange(sgs.EnumerateArray().Select(sg => sg.GetString() ?? ""));
         }
 
         return (subnets, securityGroups);
@@ -221,19 +237,7 @@ internal sealed class EcsTaskDefinitionHandler : IResourceTypeHandler
         {
             foreach (var c in defs.EnumerateArray())
             {
-                var portMappings = new List<PortMapping>();
-                if (c.TryGetProperty("portMappings", out var pms) && pms.ValueKind == JsonValueKind.Array)
-                {
-                    foreach (var pm in pms.EnumerateArray())
-                    {
-                        portMappings.Add(new PortMapping
-                        {
-                            ContainerPort = GetIntNullable(pm, "containerPort"),
-                            HostPort = GetIntNullable(pm, "hostPort"),
-                            Protocol = GetString(pm, "protocol")
-                        });
-                    }
-                }
+                var portMappings = ExtractPortMappings(c);
 
                 containers.Add(new ContainerDefinition
                 {
@@ -265,6 +269,25 @@ internal sealed class EcsTaskDefinitionHandler : IResourceTypeHandler
             Memory = GetIntNullable(data, "memory") ?? ParseCpuMemory(GetString(data, "memory")),
             Containers = containers
         };
+    }
+
+    private static List<PortMapping> ExtractPortMappings(JsonElement containerDefinition)
+    {
+        var portMappings = new List<PortMapping>();
+        if (!containerDefinition.TryGetProperty("portMappings", out var pms) || pms.ValueKind != JsonValueKind.Array)
+            return portMappings;
+        
+        foreach (var pm in pms.EnumerateArray())
+        {
+            portMappings.Add(new PortMapping
+            {
+                ContainerPort = GetIntNullable(pm, "containerPort"),
+                HostPort = GetIntNullable(pm, "hostPort"),
+                Protocol = GetString(pm, "protocol")
+            });
+        }
+
+        return portMappings;
     }
 
     private static int? ParseCpuMemory(string? val)
@@ -320,19 +343,17 @@ internal sealed class LambdaFunctionHandler : IResourceTypeHandler
         var securityGroups = new List<string>();
         string? vpcId = null;
 
-        if (data.TryGetProperty("VpcConfig", out var vpc))
+        if (!data.TryGetProperty("VpcConfig", out var vpc)) return (subnets, securityGroups, vpcId);
+        
+        vpcId = GetString(vpc, "VpcId");
+        if (vpc.TryGetProperty("SubnetIds", out var subs) && subs.ValueKind == JsonValueKind.Array)
         {
-            vpcId = GetString(vpc, "VpcId");
-            if (vpc.TryGetProperty("SubnetIds", out var subs) && subs.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var s in subs.EnumerateArray())
-                    subnets.Add(s.GetString() ?? "");
-            }
-            if (vpc.TryGetProperty("SecurityGroupIds", out var sgs) && sgs.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var sg in sgs.EnumerateArray())
-                    securityGroups.Add(sg.GetString() ?? "");
-            }
+            subnets.AddRange(subs.EnumerateArray().Select(s => s.GetString() ?? ""));
+        }
+        
+        if (vpc.TryGetProperty("SecurityGroupIds", out var sgs) && sgs.ValueKind == JsonValueKind.Array)
+        {
+            securityGroups.AddRange(sgs.EnumerateArray().Select(sg => sg.GetString() ?? ""));
         }
 
         return (subnets, securityGroups, vpcId);

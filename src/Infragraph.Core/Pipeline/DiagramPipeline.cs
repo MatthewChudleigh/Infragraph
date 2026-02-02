@@ -13,6 +13,7 @@ public sealed class DiagramPipeline(
     IGraphBuilder graphBuilder,
     IResourceModelFactory modelFactory,
     IEnumerable<IRelationshipExtractor> extractors,
+    IEnumerable<IGroupingStrategy> groupingStrategies,
     IRenderer<ReactFlowDiagram> renderer)
     : IDiagramPipeline
 {
@@ -34,30 +35,13 @@ public sealed class DiagramPipeline(
         var resources = former2Resources.Select(modelFactory.CreateModel).ToList();
 
         // Step 3: Build resource index for relationship extraction (handle duplicates)
-        var resourceIndex = new Dictionary<string, AwsResource>();
-        foreach (var resource in resources)
-        {
-            resourceIndex.TryAdd(resource.Id, resource);
-        }
+        var resourceIndex = BuildResourceIndex(resources);
 
-        // Also index by common ID formats (VpcId, SubnetId, etc.)
-        AddAlternativeIds(resourceIndex, resources);
-
-        // Step 4: Extract relationships
-        var relationships = new List<ResourceRelationship>();
-        foreach (var resource in resources)
-        {
-            foreach (var extractor in extractors)
-            {
-                if (extractor.SupportedResourceTypes.Contains(resource.Type))
-                {
-                    relationships.AddRange(extractor.ExtractRelationships(resource, resourceIndex));
-                }
-            }
-        }
+        // Step 4: Build relationships
+        var relationships = BuildRelationships(extractors.ToList(), resourceIndex, resources);
 
         // Step 5: Build graph
-        var graph = graphBuilder.BuildGraph(resources, relationships, options);
+        var graph = graphBuilder.BuildGraph(resources, relationships, groupingStrategies, options);
 
         // Step 6: Render to React Flow format
         var diagram = renderer.Render(graph, options);
@@ -65,13 +49,40 @@ public sealed class DiagramPipeline(
         return diagram;
     }
 
+    private static List<ResourceRelationship> BuildRelationships(
+        ICollection<IRelationshipExtractor> extractors,
+        Dictionary<string, AwsResource> resourceIndex,
+        List<AwsResource> resources)
+    {
+        var relationships = new List<ResourceRelationship>();
+        
+        foreach (var resource in resources)
+        {
+            foreach (var extractor in extractors)
+            {
+                if (extractor.SupportedResourceTypes.Contains(resource.Type))
+                {
+                    relationships.AddRange(extractor.ExtractRelationships(resourceIndex, resource));
+                }
+            }
+        }
+
+        return relationships;
+    }
+
     /// <summary>
     /// Adds alternative IDs to the resource index for easier lookup.
     /// </summary>
-    private static void AddAlternativeIds(Dictionary<string, AwsResource> index, List<AwsResource> resources)
+    private static Dictionary<string, AwsResource> BuildResourceIndex(List<AwsResource> resources)
     {
+        var index = new Dictionary<string, AwsResource>();
+        
         foreach (var resource in resources)
         {
+            index.TryAdd(resource.Id, resource);
+            
+            // Also index by common ID formats (VpcId, SubnetId, etc.)
+            
             // Add by ARN if different from ID
             if (!string.IsNullOrEmpty(resource.Arn) && resource.Arn != resource.Id)
             {
@@ -137,5 +148,7 @@ public sealed class DiagramPipeline(
                     break;
             }
         }
+
+        return index;
     }
 }

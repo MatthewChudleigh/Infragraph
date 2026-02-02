@@ -10,14 +10,17 @@ using Infragraph.Common.Models.Graph;
 /// </summary>
 public sealed class GraphBuilder : IGraphBuilder
 {
-    private readonly IEnumerable<IGroupingStrategy> _groupingStrategies;
-
-    public GraphBuilder(IEnumerable<IGroupingStrategy> groupingStrategies)
-    {
-        _groupingStrategies = groupingStrategies.OrderBy(s => s.Priority);
-    }
-
     public InfraGraph BuildGraph(
+        IEnumerable<AwsResource> resources,
+        IEnumerable<ResourceRelationship> relationships,
+        IEnumerable<IGroupingStrategy> groupingStrategies,
+        DiagramOptions options)
+    {
+        return BuildGraph(groupingStrategies, resources, relationships, options);
+    }
+    
+    private static InfraGraph BuildGraph(
+        IEnumerable<IGroupingStrategy> groupingStrategies,
         IEnumerable<AwsResource> resources,
         IEnumerable<ResourceRelationship> relationships,
         DiagramOptions options)
@@ -50,7 +53,7 @@ public sealed class GraphBuilder : IGraphBuilder
         }
 
         // Apply grouping strategies
-        var groups = ApplyGrouping(nodes, edges, options);
+        var groups = ApplyGrouping(groupingStrategies, nodes, edges, options);
 
         // Remove nodes that are now represented as groups (VPCs, Subnets)
         // These resources are containers, not individual nodes
@@ -136,14 +139,15 @@ public sealed class GraphBuilder : IGraphBuilder
         return edges;
     }
 
-    private List<NodeGroup> ApplyGrouping(
+    private static List<NodeGroup> ApplyGrouping(
+        IEnumerable<IGroupingStrategy> groupingStrategies,
         List<GraphNode> nodes,
         List<GraphEdge> edges,
         DiagramOptions options)
     {
         var allGroups = new List<NodeGroup>();
 
-        foreach (var strategy in _groupingStrategies)
+        foreach (var strategy in groupingStrategies)
         {
             if (!options.GroupingStrategies.Contains(strategy.GroupingType))
                 continue;

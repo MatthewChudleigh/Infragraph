@@ -4,22 +4,61 @@ using System.Text.Json;
 using Common.Models.Domain;
 using Common.Models.Former2;
 
+internal sealed class IamHelper
+{
+    public static List<string> ExtractRoleArns(JsonElement data)
+    {
+        var roleArns = new List<string>();
+        if (!data.TryGetProperty("Roles", out var roles) || roles.ValueKind != JsonValueKind.Array) return roleArns;
+        
+        foreach (var r in roles.EnumerateArray())
+        {
+            if (r.TryGetProperty("Arn", out var arn))
+                roleArns.Add(arn.GetString() ?? "");
+        }
+
+        return roleArns;
+    }
+    
+    public static List<string> ExtractPolicyArns(JsonElement data)
+    {
+        var policyArns = new List<string>();
+        if (!data.TryGetProperty("AttachedPolicies", out var policies) || policies.ValueKind != JsonValueKind.Array)
+            return policyArns;
+        
+        foreach (var p in policies.EnumerateArray())
+        {
+            if (p.TryGetProperty("PolicyArn", out var arn))
+                policyArns.Add(arn.GetString() ?? "");
+        }
+
+        return policyArns;
+    }
+
+    public static List<string> ExtractGroups(JsonElement data)
+    {
+        var groups = new List<string>();
+        if (!data.TryGetProperty("Groups", out var grps) || grps.ValueKind != JsonValueKind.Array) return groups;
+        
+        foreach (var g in grps.EnumerateArray())
+        {
+            if (g.ValueKind == JsonValueKind.String)
+                groups.Add(g.GetString() ?? "");
+            else if (g.TryGetProperty("GroupName", out var gn))
+                groups.Add(gn.GetString() ?? "");
+        }
+
+        return groups;
+    }
+}
+
 internal sealed class IamRoleHandler : IResourceTypeHandler
 {
     public AwsResource CreateResource(Former2Resource resource)
     {
         var data = resource.Data;
         var tags = ResourceModelFactory.ExtractTags(data);
-
-        var policyArns = new List<string>();
-        if (data.TryGetProperty("AttachedPolicies", out var policies) && policies.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var p in policies.EnumerateArray())
-            {
-                if (p.TryGetProperty("PolicyArn", out var arn))
-                    policyArns.Add(arn.GetString() ?? "");
-            }
-        }
+        var policyArns = IamHelper.ExtractPolicyArns(data);
 
         return new IamRoleResource
         {
@@ -54,27 +93,9 @@ internal sealed class IamUserHandler : IResourceTypeHandler
         var data = resource.Data;
         var tags = ResourceModelFactory.ExtractTags(data);
 
-        var policyArns = new List<string>();
-        if (data.TryGetProperty("AttachedPolicies", out var policies) && policies.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var p in policies.EnumerateArray())
-            {
-                if (p.TryGetProperty("PolicyArn", out var arn))
-                    policyArns.Add(arn.GetString() ?? "");
-            }
-        }
+        var policyArns = IamHelper.ExtractPolicyArns(data);
 
-        var groups = new List<string>();
-        if (data.TryGetProperty("Groups", out var grps) && grps.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var g in grps.EnumerateArray())
-            {
-                if (g.ValueKind == JsonValueKind.String)
-                    groups.Add(g.GetString() ?? "");
-                else if (g.TryGetProperty("GroupName", out var gn))
-                    groups.Add(gn.GetString() ?? "");
-            }
-        }
+        var groups = IamHelper.ExtractGroups(data);
 
         return new IamUserResource
         {
@@ -139,15 +160,7 @@ internal sealed class InstanceProfileHandler : IResourceTypeHandler
         var data = resource.Data;
         var tags = ResourceModelFactory.ExtractTags(data);
 
-        var roleArns = new List<string>();
-        if (data.TryGetProperty("Roles", out var roles) && roles.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var r in roles.EnumerateArray())
-            {
-                if (r.TryGetProperty("Arn", out var arn))
-                    roleArns.Add(arn.GetString() ?? "");
-            }
-        }
+        var roleArns = IamHelper.ExtractRoleArns(data);
 
         return new InstanceProfileResource
         {

@@ -1,7 +1,7 @@
-namespace Infragraph.Core.Relationships.Extractors;
+using Infragraph.Common.Abstractions;
+using Infragraph.Common.Models.Domain;
 
-using Common.Abstractions;
-using Common.Models.Domain;
+namespace Infragraph.Core.Relationships;
 
 /// <summary>
 /// Extracts IAM role relationships (policies, instance profiles).
@@ -12,8 +12,8 @@ public sealed class IamRoleExtractor : IRelationshipExtractor
         ["iam.role", "iam.instanceprofile", "iam.user"];
 
     public IEnumerable<ResourceRelationship> ExtractRelationships(
-        AwsResource source,
-        IReadOnlyDictionary<string, AwsResource> index)
+        IReadOnlyDictionary<string, AwsResource> index,
+        AwsResource source)
     {
         switch (source)
         {

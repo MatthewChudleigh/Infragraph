@@ -239,15 +239,7 @@ internal sealed class InternetGatewayHandler : IResourceTypeHandler
         var data = resource.Data;
         var tags = ResourceModelFactory.ExtractTags(data);
 
-        var attachedVpcs = new List<string>();
-        if (data.TryGetProperty("Attachments", out var atts) && atts.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var att in atts.EnumerateArray())
-            {
-                if (att.TryGetProperty("VpcId", out var vpcId))
-                    attachedVpcs.Add(vpcId.GetString() ?? "");
-            }
-        }
+        var attachedVpcs = ExtractAttachedVpcs(data);
 
         return new InternetGatewayResource
         {
@@ -260,6 +252,21 @@ internal sealed class InternetGatewayHandler : IResourceTypeHandler
             InternetGatewayId = GetString(data, "InternetGatewayId"),
             AttachedVpcIds = attachedVpcs
         };
+    }
+
+    private static List<string> ExtractAttachedVpcs(JsonElement data)
+    {
+        var attachedVpcs = new List<string>();
+        if (!data.TryGetProperty("Attachments", out var atts) || atts.ValueKind != JsonValueKind.Array)
+            return attachedVpcs;
+        
+        foreach (var att in atts.EnumerateArray())
+        {
+            if (att.TryGetProperty("VpcId", out var vpcId))
+                attachedVpcs.Add(vpcId.GetString() ?? "");
+        }
+
+        return attachedVpcs;
     }
 
     private static string? GetString(JsonElement data, string prop) =>

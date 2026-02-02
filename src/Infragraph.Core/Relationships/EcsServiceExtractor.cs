@@ -1,7 +1,7 @@
-namespace Infragraph.Core.Relationships.Extractors;
+using Infragraph.Common.Abstractions;
+using Infragraph.Common.Models.Domain;
 
-using Common.Abstractions;
-using Common.Models.Domain;
+namespace Infragraph.Core.Relationships;
 
 /// <summary>
 /// Extracts ECS service relationships (cluster, task definition, subnets, security groups, load balancers).
@@ -11,8 +11,8 @@ public sealed class EcsServiceExtractor : IRelationshipExtractor
     public IEnumerable<string> SupportedResourceTypes => ["ecs.service", "ecs.cluster", "ecs.taskdefinition"];
 
     public IEnumerable<ResourceRelationship> ExtractRelationships(
-        AwsResource source,
-        IReadOnlyDictionary<string, AwsResource> index)
+        IReadOnlyDictionary<string, AwsResource> index,
+        AwsResource source)
     {
         switch (source)
         {

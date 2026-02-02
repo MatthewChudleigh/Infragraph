@@ -14,10 +14,12 @@ public interface IGraphBuilder
     /// </summary>
     /// <param name="resources">The AWS resources.</param>
     /// <param name="relationships">The relationships between resources.</param>
+    /// <param name="groupingStrategies">The grouping strategies to use.</param>
     /// <param name="options">Diagram generation options.</param>
     /// <returns>The constructed infrastructure graph.</returns>
     InfraGraph BuildGraph(
         IEnumerable<AwsResource> resources,
         IEnumerable<ResourceRelationship> relationships,
+        IEnumerable<IGroupingStrategy> groupingStrategies,
         DiagramOptions options);
 }

@@ -1,3 +1,4 @@
+using Infragraph.Server;
 using Infragraph.Server.Configuration;
 using Infragraph.Server.Endpoints;
 
