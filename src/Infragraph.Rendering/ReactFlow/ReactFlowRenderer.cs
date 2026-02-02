@@ -13,46 +13,32 @@ public sealed class ReactFlowRenderer : IRenderer<ReactFlowDiagram>
 {
     private static readonly Dictionary<string, string> ServiceColors = new()
     {
-        ["ec2"] = "#FF9900",
-        ["ecs"] = "#FF9900",
-        ["elbv2"] = "#8C4FFF",
-        ["iam"] = "#DD4B39",
-        ["s3"] = "#3F8624",
-        ["rds"] = "#3B48CC",
-        ["dynamodb"] = "#3B48CC",
-        ["lambda"] = "#FF9900",
-        ["sqs"] = "#FF4F8B",
-        ["sns"] = "#FF4F8B",
-        ["logs"] = "#FF4F8B",
-        ["secretsmanager"] = "#DD4B39"
+        [SupportedServiceTypes.Ec2] = "#FF9900",
+        [SupportedServiceTypes.Ecs] = "#FF9900",
+        [SupportedServiceTypes.ElbV2] = "#8C4FFF",
+        [SupportedServiceTypes.Iam] = "#DD4B39",
+        [SupportedServiceTypes.S3] = "#3F8624",
+        [SupportedServiceTypes.Rds] = "#3B48CC",
+        [SupportedServiceTypes.DynamoDb] = "#3B48CC",
+        [SupportedServiceTypes.Lambda] = "#FF9900",
+        [SupportedServiceTypes.Sqs] = "#FF4F8B",
+        [SupportedServiceTypes.Sns] = "#FF4F8B",
+        [SupportedServiceTypes.CloudWatchLogs] = "#FF4F8B",
+        [SupportedServiceTypes.SecretsManager] = "#DD4B39"
     };
 
     public ReactFlowDiagram Render(InfraGraph graph, DiagramOptions options)
     {
-        var nodes = new List<ReactFlowNode>();
-        var edges = new List<ReactFlowEdge>();
-
         // Create group nodes first (they need to be in the nodes array for React Flow)
-        foreach (var group in graph.Groups)
-        {
-            nodes.Add(CreateGroupNode(group, options));
-        }
-
+        var nodes = graph.Groups.Select(group => CreateGroupNode(group, options)).ToList();
         // Create resource nodes
-        foreach (var node in graph.Nodes)
-        {
-            nodes.Add(CreateResourceNode(node, options));
-        }
+        nodes.AddRange(graph.Nodes.Select(node => CreateResourceNode(node, options)));
 
         // Create edges
-        foreach (var edge in graph.Edges)
-        {
-            // Skip containment edges (represented by parent-child relationship)
-            if (edge.RelationshipType == RelationshipType.Contains)
-                continue;
-
-            edges.Add(CreateEdge(edge));
-        }
+        var edges = (
+            from edge in graph.Edges 
+            where edge.RelationshipType != RelationshipType.Contains 
+            select CreateEdge(edge)).ToList();
 
         // Build metadata
         var metadata = new ReactFlowMetadata

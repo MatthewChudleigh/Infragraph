@@ -6,7 +6,7 @@ namespace Infragraph.Core.Relationships;
 /// <summary>
 /// Extracts security group reference relationships.
 /// </summary>
-public sealed class SecurityGroupExtractor : IRelationshipExtractor
+public sealed class SecurityRelationship : IRelationshipExtractor
 {
     public IEnumerable<string> SupportedResourceTypes => ["ec2.securitygroup"];
 

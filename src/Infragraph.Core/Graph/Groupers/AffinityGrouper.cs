@@ -13,46 +13,23 @@ public sealed class AffinityGrouper : IGroupingStrategy
     public string GroupingType => "affinity";
     public int Priority => 3; // Applied after Service grouping
 
-    public IEnumerable<NodeGroup> GroupNodes(
-        IEnumerable<GraphNode> nodes,
-        IEnumerable<GraphEdge> edges)
+    public IEnumerable<NodeGroup> GroupNodes(RelationMap map)
     {
-        var nodeList = nodes.ToList();
-        var edgeList = edges.ToList();
-
-        // Build reverse lookup: target -> list of sources that use it
-        var usedBy = new Dictionary<string, List<string>>();
-        foreach (var edge in edgeList.Where(e => e.RelationshipType == RelationshipType.Uses))
-        {
-            if (!usedBy.ContainsKey(edge.Target))
-                usedBy[edge.Target] = [];
-            usedBy[edge.Target].Add(edge.Source);
-        }
-
-        // Build forward lookup for AttachedTo: source -> list of targets
-        var attachedTo = new Dictionary<string, List<string>>();
-        foreach (var edge in edgeList.Where(e => e.RelationshipType == RelationshipType.AttachedTo))
-        {
-            if (!attachedTo.ContainsKey(edge.Source))
-                attachedTo[edge.Source] = [];
-            attachedTo[edge.Source].Add(edge.Target);
-        }
-
         // Find security groups with exactly one user
-        foreach (var group in FindSingleUserSecurityGroups(nodeList, usedBy))
+        foreach (var group in FindSingleUserSecurityGroups(map.Nodes, map.UsedBy))
             yield return group;
 
         // Find instance profiles with exactly one user
-        foreach (var group in FindSingleUserInstanceProfiles(nodeList, usedBy))
+        foreach (var group in FindSingleUserInstanceProfiles(map.Nodes, map.UsedBy))
             yield return group;
 
         // Find volumes attached to exactly one instance
-        foreach (var group in FindSingleInstanceVolumes(nodeList, attachedTo))
+        foreach (var group in FindSingleInstanceVolumes(map.Nodes, map.AttachedTo))
             yield return group;
     }
 
     private static IEnumerable<NodeGroup> FindSingleUserSecurityGroups(
-        List<GraphNode> nodes,
+        ICollection<GraphNode> nodes,
         Dictionary<string, List<string>> usedBy)
     {
         var securityGroups = nodes.Where(n => n.ResourceType == "ec2.securitygroup").ToList();
@@ -81,7 +58,7 @@ public sealed class AffinityGrouper : IGroupingStrategy
     }
 
     private static IEnumerable<NodeGroup> FindSingleUserInstanceProfiles(
-        List<GraphNode> nodes,
+        ICollection<GraphNode> nodes,
         Dictionary<string, List<string>> usedBy)
     {
         var instanceProfiles = nodes.Where(n => n.ResourceType == "iam.instanceprofile").ToList();
@@ -110,7 +87,7 @@ public sealed class AffinityGrouper : IGroupingStrategy
     }
 
     private static IEnumerable<NodeGroup> FindSingleInstanceVolumes(
-        List<GraphNode> nodes,
+        ICollection<GraphNode> nodes,
         Dictionary<string, List<string>> attachedTo)
     {
         var volumes = nodes.Where(n => n.ResourceType == "ec2.volume").ToList();

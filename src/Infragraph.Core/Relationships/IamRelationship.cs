@@ -6,7 +6,7 @@ namespace Infragraph.Core.Relationships;
 /// <summary>
 /// Extracts IAM role relationships (policies, instance profiles).
 /// </summary>
-public sealed class IamRoleExtractor : IRelationshipExtractor
+public sealed class IamRelationship : IRelationshipExtractor
 {
     public IEnumerable<string> SupportedResourceTypes =>
         ["iam.role", "iam.instanceprofile", "iam.user"];

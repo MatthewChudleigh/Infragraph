@@ -29,12 +29,12 @@ public static class ServiceRegistration
         services.AddSingleton<IResourceModelFactory, ResourceModelFactory>();
 
         // Relationship extractors
-        services.AddSingleton<IRelationshipExtractor, VpcSubnetExtractor>();
-        services.AddSingleton<IRelationshipExtractor, SecurityGroupExtractor>();
-        services.AddSingleton<IRelationshipExtractor, EcsServiceExtractor>();
-        services.AddSingleton<IRelationshipExtractor, ElbTargetGroupExtractor>();
-        services.AddSingleton<IRelationshipExtractor, IamRoleExtractor>();
-        services.AddSingleton<IRelationshipExtractor, ComputeExtractor>();
+        services.AddSingleton<IRelationshipExtractor, NetworkRelationship>();
+        services.AddSingleton<IRelationshipExtractor, SecurityRelationship>();
+        services.AddSingleton<IRelationshipExtractor, EcsRelationship>();
+        services.AddSingleton<IRelationshipExtractor, ElbRelationship>();
+        services.AddSingleton<IRelationshipExtractor, IamRelationship>();
+        services.AddSingleton<IRelationshipExtractor, ComputeRelationship>();
 
         // Grouping strategies
         services.AddSingleton<IGroupingStrategy, VpcGrouper>();

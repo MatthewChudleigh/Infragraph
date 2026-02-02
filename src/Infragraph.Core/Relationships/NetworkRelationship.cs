@@ -6,9 +6,12 @@ namespace Infragraph.Core.Relationships;
 /// <summary>
 /// Extracts VPC-to-Subnet containment relationships and subnet-to-VPC belonging relationships.
 /// </summary>
-public sealed class VpcSubnetExtractor : IRelationshipExtractor
+public sealed class NetworkRelationship : IRelationshipExtractor
 {
-    public IEnumerable<string> SupportedResourceTypes => ["ec2.vpc", "ec2.subnet"];
+    public IEnumerable<string> SupportedResourceTypes => [
+        "ec2.vpc", 
+        "ec2.subnet"
+    ];
 
     public IEnumerable<ResourceRelationship> ExtractRelationships(
         IReadOnlyDictionary<string, AwsResource> index,
@@ -49,26 +52,25 @@ public sealed class VpcSubnetExtractor : IRelationshipExtractor
     {
         // Find VPC by VpcId
         var vpc = FindResourceByProperty<VpcResource>(index, r => r.VpcId == subnet.VpcId || r.Id == subnet.VpcId);
-        if (vpc != null)
+        if (vpc == null) yield break;
+        
+        // Subnet belongs to VPC
+        yield return new ResourceRelationship
         {
-            // Subnet belongs to VPC
-            yield return new ResourceRelationship
-            {
-                SourceId = subnet.Id,
-                TargetId = vpc.Id,
-                RelationshipType = RelationshipType.BelongsTo,
-                Label = "in VPC"
-            };
+            SourceId = subnet.Id,
+            TargetId = vpc.Id,
+            RelationshipType = RelationshipType.BelongsTo,
+            Label = "in VPC"
+        };
 
-            // VPC contains Subnet (reverse relationship)
-            yield return new ResourceRelationship
-            {
-                SourceId = vpc.Id,
-                TargetId = subnet.Id,
-                RelationshipType = RelationshipType.Contains,
-                Label = "contains"
-            };
-        }
+        // VPC contains Subnet (reverse relationship)
+        yield return new ResourceRelationship
+        {
+            SourceId = vpc.Id,
+            TargetId = subnet.Id,
+            RelationshipType = RelationshipType.Contains,
+            Label = "contains"
+        };
     }
 
     private static IEnumerable<ResourceRelationship> ExtractSecurityGroupVpcRelationship(
@@ -137,18 +139,17 @@ public sealed class VpcSubnetExtractor : IRelationshipExtractor
                 }
             }
 
-            if (!string.IsNullOrEmpty(route.NatGatewayId))
+            if (string.IsNullOrEmpty(route.NatGatewayId)) continue;
+            
+            if (index.TryGetValue(route.NatGatewayId, out var nat))
             {
-                if (index.TryGetValue(route.NatGatewayId, out var nat))
+                yield return new ResourceRelationship
                 {
-                    yield return new ResourceRelationship
-                    {
-                        SourceId = rt.Id,
-                        TargetId = nat.Id,
-                        RelationshipType = RelationshipType.RoutesTo,
-                        Label = route.DestinationCidrBlock
-                    };
-                }
+                    SourceId = rt.Id,
+                    TargetId = nat.Id,
+                    RelationshipType = RelationshipType.RoutesTo,
+                    Label = route.DestinationCidrBlock
+                };
             }
         }
     }
@@ -157,20 +158,16 @@ public sealed class VpcSubnetExtractor : IRelationshipExtractor
         InternetGatewayResource igw,
         IReadOnlyDictionary<string, AwsResource> index)
     {
-        foreach (var vpcId in igw.AttachedVpcIds)
+        return igw.AttachedVpcIds.Select(vpcId => 
+            FindResourceByProperty<VpcResource>(index, r => r.VpcId == vpcId || r.Id == vpcId))
+            .OfType<VpcResource>()
+            .Select(vpc => new ResourceRelationship
         {
-            var vpc = FindResourceByProperty<VpcResource>(index, r => r.VpcId == vpcId || r.Id == vpcId);
-            if (vpc != null)
-            {
-                yield return new ResourceRelationship
-                {
-                    SourceId = igw.Id,
-                    TargetId = vpc.Id,
-                    RelationshipType = RelationshipType.AttachedTo,
-                    Label = "attached to"
-                };
-            }
-        }
+            SourceId = igw.Id,
+            TargetId = vpc.Id,
+            RelationshipType = RelationshipType.AttachedTo,
+            Label = "attached to"
+        });
     }
 
     private static IEnumerable<ResourceRelationship> ExtractNatGatewayRelationships(
@@ -178,18 +175,17 @@ public sealed class VpcSubnetExtractor : IRelationshipExtractor
         IReadOnlyDictionary<string, AwsResource> index)
     {
         // NAT Gateway in subnet
-        if (!string.IsNullOrEmpty(nat.SubnetId))
+        if (string.IsNullOrEmpty(nat.SubnetId)) yield break;
+        
+        if (index.TryGetValue(nat.SubnetId, out var subnet))
         {
-            if (index.TryGetValue(nat.SubnetId, out var subnet))
+            yield return new ResourceRelationship
             {
-                yield return new ResourceRelationship
-                {
-                    SourceId = nat.Id,
-                    TargetId = subnet.Id,
-                    RelationshipType = RelationshipType.BelongsTo,
-                    Label = "in subnet"
-                };
-            }
+                SourceId = nat.Id,
+                TargetId = subnet.Id,
+                RelationshipType = RelationshipType.BelongsTo,
+                Label = "in subnet"
+            };
         }
     }
 

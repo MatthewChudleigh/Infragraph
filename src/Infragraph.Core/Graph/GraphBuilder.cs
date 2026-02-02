@@ -53,8 +53,9 @@ public sealed class GraphBuilder : IGraphBuilder
         }
 
         // Apply grouping strategies
+        var map = RelationMap.Map(nodes, edges);
         var (finalNodes, finalEdges, groups) = 
-            ApplyGrouping(groupingStrategies, nodes, edges, options);
+            ApplyGrouping(groupingStrategies, map, options);
 
         // Build metadata
         var metadata = BuildMetadata(resourceList, relationshipList, finalNodes, options);
@@ -123,10 +124,7 @@ public sealed class GraphBuilder : IGraphBuilder
     }
 
     private static (List<GraphNode>, List<GraphEdge>, List<NodeGroup>) ApplyGrouping(
-        IEnumerable<IGroupingStrategy> groupingStrategies,
-        List<GraphNode> nodes,
-        List<GraphEdge> edges,
-        DiagramOptions options)
+        IEnumerable<IGroupingStrategy> groupingStrategies, RelationMap map, DiagramOptions options)
     {
         var allGroups = new List<NodeGroup>();
 
@@ -134,15 +132,15 @@ public sealed class GraphBuilder : IGraphBuilder
         {
             if (!options.GroupingStrategies.Contains(strategy.GroupingType))
                 continue;
-
-            var groups = strategy.GroupNodes(nodes, edges).ToList();
+            
+            var groups = strategy.GroupNodes(map).ToList();
             allGroups.AddRange(groups);
 
             // Update node parent IDs based on grouping (skip affinity hints for now)
             foreach (var group in groups.Where(g => g.GroupType != "affinity-hint"))
             {
-                foreach (var node in group.NodeIds.Select(nodeId => nodes.FirstOrDefault(n => n.Id == nodeId)))
-                {
+                foreach (var node in group.NodeIds.Select(nodeId => map.Nodes.FirstOrDefault(n => n.Id == nodeId)))
+                {   // Set the node parent if it doesn't already have a parent
                     if (node is { ParentId: null })
                     {
                         node.ParentId = group.Id;
@@ -159,7 +157,7 @@ public sealed class GraphBuilder : IGraphBuilder
                 continue;
 
             // Find the target node and its parent group
-            var targetNode = nodes.FirstOrDefault(n => n.Id == targetId);
+            var targetNode = map.Nodes.FirstOrDefault(n => n.Id == targetId);
             if (targetNode?.ParentId == null)
                 continue;
 
@@ -171,7 +169,7 @@ public sealed class GraphBuilder : IGraphBuilder
             // Move affinity nodes into the same parent group
             foreach (var nodeId in hint.NodeIds)
             {
-                var node = nodes.FirstOrDefault(n => n.Id == nodeId);
+                var node = map.Nodes.FirstOrDefault(n => n.Id == nodeId);
                 if (node == null) continue;
                 node.ParentId = parentGroup.Id;
 
@@ -195,10 +193,10 @@ public sealed class GraphBuilder : IGraphBuilder
                 .Where(id => id != null)
                 .ToHashSet();
 
-            nodes = nodes.Where(n => !groupResourceIds.Contains(n.Id)).ToList();
+            var nodes = map.Nodes.Where(n => !groupResourceIds.Contains(n.Id)).ToList();
 
             // Also remove edges that connect to/from these group resources
-            edges = edges.Where(e =>
+            var edges = map.Edges.Where(e =>
                 !groupResourceIds.Contains(e.Source) &&
                 !groupResourceIds.Contains(e.Target)).ToList();
 

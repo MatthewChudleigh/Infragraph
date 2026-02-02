@@ -13,50 +13,29 @@ public sealed class ServiceGrouper : IGroupingStrategy
     public string GroupingType => "service";
     public int Priority => 2; // Applied after VPC grouping
 
-    public IEnumerable<NodeGroup> GroupNodes(
-        IEnumerable<GraphNode> nodes,
-        IEnumerable<GraphEdge> edges)
+    public IEnumerable<NodeGroup> GroupNodes(RelationMap map)
     {
-        var nodeList = nodes.ToList();
-        var edgeList = edges.ToList();
-
-        // Find containment relationships
-        var containedBy = new Dictionary<string, string>();
-        foreach (var edge in edgeList.Where(e => e.RelationshipType == RelationshipType.Contains))
-        {
-            containedBy[edge.Target] = edge.Source;
-        }
-
-        // Build uses relationships map (source -> list of targets)
-        var usesRelationships = new Dictionary<string, List<string>>();
-        foreach (var edge in edgeList.Where(e => e.RelationshipType == RelationshipType.Uses))
-        {
-            if (!usesRelationships.ContainsKey(edge.Source))
-                usesRelationships[edge.Source] = [];
-            usesRelationships[edge.Source].Add(edge.Target);
-        }
-
         // Group ECS clusters
-        foreach (var group in GroupEcsClusters(nodeList, containedBy, usesRelationships))
+        foreach (var group in GroupEcsClusters(map.Nodes, map.ContainedBy, map.Uses))
             yield return group;
 
         // Group Load Balancers with their target groups
-        foreach (var group in GroupLoadBalancers(nodeList, edgeList))
+        foreach (var group in GroupLoadBalancers(map.Nodes, map.Edges))
             yield return group;
     }
 
     private static IEnumerable<NodeGroup> GroupEcsClusters(
-        List<GraphNode> nodes,
+        ICollection<GraphNode> nodes,
         Dictionary<string, string> containedBy,
         Dictionary<string, List<string>> usesRelationships)
     {
-        var clusterNodes = nodes.Where(n => n.ResourceType == "ecs.cluster").ToList();
+        var clusterNodes = nodes.Where(n => n.ResourceType == SupportedResourceTypes.EcsCluster).ToList();
 
         foreach (var cluster in clusterNodes)
         {
             // Find services in this cluster
             var servicesInCluster = nodes
-                .Where(n => n.ResourceType == "ecs.service" && containedBy.GetValueOrDefault(n.Id) == cluster.Id)
+                .Where(n => n.ResourceType == SupportedResourceTypes.EcsService && containedBy.GetValueOrDefault(n.Id) == cluster.Id)
                 .ToList();
 
             if (servicesInCluster.Count <= 0) continue;
@@ -80,7 +59,7 @@ public sealed class ServiceGrouper : IGroupingStrategy
     }
 
     private static List<string> ExtractTaskDefIds(
-        List<GraphNode> nodes, 
+        ICollection<GraphNode> nodes, 
         Dictionary<string, List<string>> usesRelationships, 
         List<GraphNode> servicesInCluster)
     {
@@ -91,7 +70,7 @@ public sealed class ServiceGrouper : IGroupingStrategy
             if (!usesRelationships.TryGetValue(service.Id, out var usedResources)) continue;
                     
             var taskDefs = usedResources
-                .Where(id => nodes.Any(n => n.Id == id && n.ResourceType == "ecs.taskdefinition"))
+                .Where(id => nodes.Any(n => n.Id == id && n.ResourceType == SupportedResourceTypes.EcsTaskDefinition))
                 .ToList();
             taskDefIds.AddRange(taskDefs);
         }
@@ -101,8 +80,8 @@ public sealed class ServiceGrouper : IGroupingStrategy
     }
 
     private static IEnumerable<NodeGroup> GroupLoadBalancers(
-        List<GraphNode> nodes,
-        List<GraphEdge> edges)
+        ICollection<GraphNode> nodes,
+        ICollection<GraphEdge> edges)
     {
         var lbNodes = nodes.Where(n => n.ResourceType == SupportedResourceTypes.LoadBalancer).ToList();
 

@@ -6,7 +6,7 @@ namespace Infragraph.Core.Relationships;
 /// <summary>
 /// Extracts EC2 instance and Lambda function relationships.
 /// </summary>
-public sealed class ComputeExtractor : IRelationshipExtractor
+public sealed class ComputeRelationship : IRelationshipExtractor
 {
     public IEnumerable<string> SupportedResourceTypes =>
         ["ec2.instance", "ec2.volume", "lambda.function"];
@@ -85,19 +85,18 @@ public sealed class ComputeExtractor : IRelationshipExtractor
         }
 
         // Instance uses instance profile
-        if (!string.IsNullOrEmpty(instance.IamInstanceProfileArn))
+        if (string.IsNullOrEmpty(instance.IamInstanceProfileArn)) yield break;
+        
+        var profile = FindResourceByArn(index, instance.IamInstanceProfileArn);
+        if (profile != null)
         {
-            var profile = FindResourceByArn(index, instance.IamInstanceProfileArn);
-            if (profile != null)
+            yield return new ResourceRelationship
             {
-                yield return new ResourceRelationship
-                {
-                    SourceId = instance.Id,
-                    TargetId = profile.Id,
-                    RelationshipType = RelationshipType.Uses,
-                    Label = "uses"
-                };
-            }
+                SourceId = instance.Id,
+                TargetId = profile.Id,
+                RelationshipType = RelationshipType.Uses,
+                Label = "uses"
+            };
         }
     }
 
@@ -179,19 +178,18 @@ public sealed class ComputeExtractor : IRelationshipExtractor
         }
 
         // Lambda assumes role
-        if (!string.IsNullOrEmpty(lambda.RoleArn))
+        if (string.IsNullOrEmpty(lambda.RoleArn)) yield break;
+        
+        var role = FindResourceByArn(index, lambda.RoleArn);
+        if (role != null)
         {
-            var role = FindResourceByArn(index, lambda.RoleArn);
-            if (role != null)
+            yield return new ResourceRelationship
             {
-                yield return new ResourceRelationship
-                {
-                    SourceId = lambda.Id,
-                    TargetId = role.Id,
-                    RelationshipType = RelationshipType.Assumes,
-                    Label = "assumes"
-                };
-            }
+                SourceId = lambda.Id,
+                TargetId = role.Id,
+                RelationshipType = RelationshipType.Assumes,
+                Label = "assumes"
+            };
         }
     }
 
@@ -209,9 +207,8 @@ public sealed class ComputeExtractor : IRelationshipExtractor
         if (string.IsNullOrEmpty(arn))
             return null;
 
-        if (index.TryGetValue(arn, out var resource))
-            return resource;
-
-        return index.Values.FirstOrDefault(r => r.Arn == arn);
+        return index.TryGetValue(arn, out var resource) 
+            ? resource 
+            : index.Values.FirstOrDefault(r => r.Arn == arn);
     }
 }

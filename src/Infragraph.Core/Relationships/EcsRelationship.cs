@@ -6,9 +6,13 @@ namespace Infragraph.Core.Relationships;
 /// <summary>
 /// Extracts ECS service relationships (cluster, task definition, subnets, security groups, load balancers).
 /// </summary>
-public sealed class EcsServiceExtractor : IRelationshipExtractor
+public sealed class EcsRelationship : IRelationshipExtractor
 {
-    public IEnumerable<string> SupportedResourceTypes => ["ecs.service", "ecs.cluster", "ecs.taskdefinition"];
+    public IEnumerable<string> SupportedResourceTypes => [
+        Common.Configuration.SupportedResourceTypes.EcsService, 
+        Common.Configuration.SupportedResourceTypes.EcsCluster, 
+        Common.Configuration.SupportedResourceTypes.EcsTaskDefinition
+    ];
 
     public IEnumerable<ResourceRelationship> ExtractRelationships(
         IReadOnlyDictionary<string, AwsResource> index,
@@ -103,36 +107,32 @@ public sealed class EcsServiceExtractor : IRelationshipExtractor
         // Service attached to target groups
         foreach (var lb in service.LoadBalancers)
         {
-            if (!string.IsNullOrEmpty(lb.TargetGroupArn))
-            {
-                var tg = FindResourceByArn(index, lb.TargetGroupArn);
-                if (tg != null)
-                {
-                    yield return new ResourceRelationship
-                    {
-                        SourceId = service.Id,
-                        TargetId = tg.Id,
-                        RelationshipType = RelationshipType.AttachedTo,
-                        Label = $":{lb.ContainerPort}"
-                    };
-                }
-            }
-        }
-
-        // Service assumes role
-        if (!string.IsNullOrEmpty(service.RoleArn))
-        {
-            var role = FindResourceByArn(index, service.RoleArn);
-            if (role != null)
+            if (string.IsNullOrEmpty(lb.TargetGroupArn)) continue;
+            var tg = FindResourceByArn(index, lb.TargetGroupArn);
+            if (tg != null)
             {
                 yield return new ResourceRelationship
                 {
                     SourceId = service.Id,
-                    TargetId = role.Id,
-                    RelationshipType = RelationshipType.Assumes,
-                    Label = "assumes"
+                    TargetId = tg.Id,
+                    RelationshipType = RelationshipType.AttachedTo,
+                    Label = $":{lb.ContainerPort}"
                 };
             }
+        }
+
+        // Service assumes role
+        if (string.IsNullOrEmpty(service.RoleArn)) yield break;
+        var role = FindResourceByArn(index, service.RoleArn);
+        if (role != null)
+        {
+            yield return new ResourceRelationship
+            {
+                SourceId = service.Id,
+                TargetId = role.Id,
+                RelationshipType = RelationshipType.Assumes,
+                Label = "assumes"
+            };
         }
     }
 
@@ -181,10 +181,9 @@ public sealed class EcsServiceExtractor : IRelationshipExtractor
             return null;
 
         // Try direct match by ARN as ID
-        if (index.TryGetValue(arn, out var resource))
-            return resource;
-
-        // Try matching by Arn property
-        return index.Values.FirstOrDefault(r => r.Arn == arn);
+        return index.TryGetValue(arn, out var resource) 
+            ? resource 
+            : // Try matching by Arn property
+            index.Values.FirstOrDefault(r => r.Arn == arn);
     }
 }

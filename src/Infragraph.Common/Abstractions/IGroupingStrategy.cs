@@ -1,3 +1,5 @@
+using Infragraph.Core.Graph;
+
 namespace Infragraph.Common.Abstractions;
 
 using Models.Graph;
@@ -10,12 +12,9 @@ public interface IGroupingStrategy
     /// <summary>
     /// Groups nodes based on the strategy's criteria.
     /// </summary>
-    /// <param name="nodes">The graph nodes to group.</param>
-    /// <param name="edges">The edges between nodes (may influence grouping).</param>
+    /// <param name="map">The graph nodes, edges and relations to group.</param>
     /// <returns>The node groups.</returns>
-    IEnumerable<NodeGroup> GroupNodes(
-        IEnumerable<GraphNode> nodes,
-        IEnumerable<GraphEdge> edges);
+    IEnumerable<NodeGroup> GroupNodes(RelationMap map);
 
     /// <summary>
     /// The type of grouping this strategy provides (e.g., "vpc", "service").

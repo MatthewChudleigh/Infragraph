@@ -12,13 +12,8 @@ public sealed class VpcGrouper : IGroupingStrategy
     public string GroupingType => "vpc";
     public int Priority => 1; // Applied first
 
-    public IEnumerable<NodeGroup> GroupNodes(
-        IEnumerable<GraphNode> nodes,
-        IEnumerable<GraphEdge> edges)
+    public IEnumerable<NodeGroup> GroupNodes(RelationMap map)
     {
-        var nodeList = nodes.ToList();
-        var edgeList = edges.ToList();
-
         // Build relationship maps
         // containedBy: child -> parent (from Contains relationships)
         // belongsTo: child -> parent (from BelongsTo relationships)
@@ -27,7 +22,7 @@ public sealed class VpcGrouper : IGroupingStrategy
         var belongsTo = new Dictionary<string, string>();
         var attachedTo = new Dictionary<string, List<string>>();
 
-        foreach (var edge in edgeList)
+        foreach (var edge in map.Edges)
         {
             switch (edge.RelationshipType)
             {
@@ -49,12 +44,12 @@ public sealed class VpcGrouper : IGroupingStrategy
         }
 
         // Find VPC nodes
-        var vpcNodes = nodeList.Where(n => n.ResourceType == "ec2.vpc").ToList();
+        var vpcNodes = map.Nodes.Where(n => n.ResourceType == "ec2.vpc").ToList();
 
         foreach (var vpc in vpcNodes)
         {
             // Find subnets in this VPC
-            var subnetsInVpc = nodeList
+            var subnetsInVpc = map.Nodes
                 .Where(n => n.ResourceType == "ec2.subnet" && NodeBelongsTo(n.Id, vpc.Id))
                 .ToList();
 
@@ -68,7 +63,7 @@ public sealed class VpcGrouper : IGroupingStrategy
             foreach (var subnet in subnetsInVpc)
             {
                 // Find resources that belong to this subnet
-                var resourcesInSubnet = nodeList
+                var resourcesInSubnet = map.Nodes
                     .Where(n => n.ResourceType != "ec2.subnet" &&
                                 n.ResourceType != "ec2.vpc" &&
                                 NodeBelongsTo(n.Id, subnet.Id))
@@ -76,12 +71,12 @@ public sealed class VpcGrouper : IGroupingStrategy
                     .ToList();
 
                 // Find resources that use this subnet
-                var resourcesUsingSubnet = edgeList
+                var resourcesUsingSubnet = map.Edges
                     .Where(e => e.Target == subnet.Id &&
                                 e.RelationshipType == RelationshipType.Uses &&
                                 !resourcesInSubnet.Contains(e.Source))
                     .Select(e => e.Source)
-                    .Where(id => nodeList.Any(n => n.Id == id))
+                    .Where(id => map.Nodes.Any(n => n.Id == id))
                     .ToList();
 
                 // Include resources in subnet
@@ -114,26 +109,26 @@ public sealed class VpcGrouper : IGroupingStrategy
             }
 
             // Find security groups that belong to this VPC
-            var vpcSecurityGroups = nodeList
+            var vpcSecurityGroups = map.Nodes
                 .Where(n => n.ResourceType == "ec2.securitygroup" && NodeBelongsTo(n.Id, vpc.Id))
                 .Select(n => n.Id)
                 .ToHashSet();
 
             // Find resources that use security groups belonging to this VPC
             // (These resources should be placed in the VPC if not already in a subnet)
-            var resourcesUsingVpcSecurityGroups = edgeList
+            var resourcesUsingVpcSecurityGroups = map.Edges
                 .Where(e => e.RelationshipType == RelationshipType.Uses &&
                             vpcSecurityGroups.Contains(e.Target) &&
                             !nodesInSubnets.Contains(e.Source))
                 .Select(e => e.Source)
-                .Where(id => nodeList.Any(n => n.Id == id &&
+                .Where(id => map.Nodes.Any(n => n.Id == id &&
                                                n.ResourceType != "ec2.subnet" &&
                                                n.ResourceType != "ec2.vpc"))
                 .ToHashSet();
 
             // Find resources directly in VPC (not in any subnet)
             // This includes security groups, route tables, internet gateways, etc.
-            var directVpcResources = nodeList
+            var directVpcResources = map.Nodes
                 .Where(n => n.ResourceType != "ec2.subnet" &&
                             n.ResourceType != "ec2.vpc" &&
                             !nodesInSubnets.Contains(n.Id) &&

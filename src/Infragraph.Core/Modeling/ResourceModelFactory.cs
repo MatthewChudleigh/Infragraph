@@ -35,9 +35,9 @@ public sealed class ResourceModelFactory : IResourceModelFactory
         // Compute
         ["ec2.instance"] = new Ec2InstanceHandler(),
         ["ec2.volume"] = new EbsVolumeHandler(),
-        ["ecs.cluster"] = new EcsClusterHandler(),
-        ["ecs.service"] = new EcsServiceHandler(),
-        ["ecs.taskdefinition"] = new EcsTaskDefinitionHandler(),
+        [SupportedResourceTypes.EcsCluster] = new EcsClusterHandler(),
+        [SupportedResourceTypes.EcsService] = new EcsServiceHandler(),
+        [SupportedResourceTypes.EcsTaskDefinition] = new EcsTaskDefinitionHandler(),
 
         // Load Balancing
         [SupportedResourceTypes.LoadBalancer] = new LoadBalancerHandler(),

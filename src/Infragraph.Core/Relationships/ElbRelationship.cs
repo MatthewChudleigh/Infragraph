@@ -6,7 +6,7 @@ namespace Infragraph.Core.Relationships;
 /// <summary>
 /// Extracts ELB/ALB relationships (load balancer, target group, listener).
 /// </summary>
-public sealed class ElbTargetGroupExtractor : IRelationshipExtractor
+public sealed class ElbRelationship : IRelationshipExtractor
 {
     public IEnumerable<string> SupportedResourceTypes =>
         [

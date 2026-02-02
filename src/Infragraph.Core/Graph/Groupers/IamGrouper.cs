@@ -12,51 +12,19 @@ public sealed class IamGrouper : IGroupingStrategy
     public string GroupingType => "iam";
     public int Priority => 4; // Applied after Affinity grouping
 
-    public IEnumerable<NodeGroup> GroupNodes(
-        IEnumerable<GraphNode> nodes,
-        IEnumerable<GraphEdge> edges)
+    public IEnumerable<NodeGroup> GroupNodes(RelationMap map)
     {
-        var nodeList = nodes.ToList();
-        var edgeList = edges.ToList();
-
-        // Build containment map (parent -> children)
-        var contains = new Dictionary<string, List<string>>();
-        foreach (var edge in edgeList.Where(e => e.RelationshipType == RelationshipType.Contains))
-        {
-            if (!contains.ContainsKey(edge.Source))
-                contains[edge.Source] = [];
-            contains[edge.Source].Add(edge.Target);
-        }
-
-        // Build uses map (source -> targets)
-        var uses = new Dictionary<string, List<string>>();
-        foreach (var edge in edgeList.Where(e => e.RelationshipType == RelationshipType.Uses))
-        {
-            if (!uses.ContainsKey(edge.Source))
-                uses[edge.Source] = [];
-            uses[edge.Source].Add(edge.Target);
-        }
-
-        // Build assumes map to find role consumers (who assumes the role)
-        var assumedBy = new Dictionary<string, List<string>>();
-        foreach (var edge in edgeList.Where(e => e.RelationshipType == RelationshipType.Assumes))
-        {
-            if (!assumedBy.ContainsKey(edge.Target))
-                assumedBy[edge.Target] = [];
-            assumedBy[edge.Target].Add(edge.Source);
-        }
-
         // Group instance profiles with their contained roles
-        foreach (var group in GroupInstanceProfiles(nodeList, contains))
+        foreach (var group in GroupInstanceProfiles(map.Nodes, map.Contains))
             yield return group;
 
         // Group roles with their policies (only if single consumer)
-        foreach (var group in GroupRolesWithPolicies(nodeList, uses, assumedBy))
+        foreach (var group in GroupRolesWithPolicies(map.Nodes, map.Uses, map.AssumedBy))
             yield return group;
     }
 
     private static IEnumerable<NodeGroup> GroupInstanceProfiles(
-        List<GraphNode> nodes,
+        ICollection<GraphNode> nodes,
         Dictionary<string, List<string>> contains)
     {
         var instanceProfiles = nodes.Where(n => n.ResourceType == "iam.instanceprofile").ToList();
@@ -87,7 +55,7 @@ public sealed class IamGrouper : IGroupingStrategy
     }
 
     private static IEnumerable<NodeGroup> GroupRolesWithPolicies(
-        List<GraphNode> nodes,
+        ICollection<GraphNode> nodes,
         Dictionary<string, List<string>> uses,
         Dictionary<string, List<string>> assumedBy)
     {
@@ -103,9 +71,7 @@ public sealed class IamGrouper : IGroupingStrategy
             // Find policies used by this role (both managed and inline)
             var policyIds = usedIds
                 .Where(id => nodes.Any(n => n.Id == id &&
-                                            (n.ResourceType == "iam.policy" ||
-                                             n.ResourceType == "iam.managedpolicy" ||
-                                             n.ResourceType == "iam.rolepolicy")))
+                                            n.ResourceType is "iam.policy" or "iam.managedpolicy" or "iam.rolepolicy"))
                 .ToList();
 
             // Skip AWS managed policies (they're used by many roles)
