@@ -66,9 +66,9 @@ public sealed class AffinityGrouper : IGroupingStrategy
             {
                 yield return new NodeGroup
                 {
+                    GroupType = "affinity-hint",
                     Id = $"affinity-sg-{sg.Id}",
                     Label = sg.Label,
-                    GroupType = "affinity-hint",
                     NodeIds = [sg.Id],
                     Data = new Dictionary<string, object>
                     {
@@ -95,9 +95,9 @@ public sealed class AffinityGrouper : IGroupingStrategy
             {
                 yield return new NodeGroup
                 {
+                    GroupType = "affinity-hint",
                     Id = $"affinity-profile-{profile.Id}",
                     Label = profile.Label,
-                    GroupType = "affinity-hint",
                     NodeIds = [profile.Id],
                     Data = new Dictionary<string, object>
                     {
@@ -124,9 +124,9 @@ public sealed class AffinityGrouper : IGroupingStrategy
             {
                 yield return new NodeGroup
                 {
+                    GroupType = "affinity-hint",
                     Id = $"affinity-volume-{volume.Id}",
                     Label = volume.Label,
-                    GroupType = "affinity-hint",
                     NodeIds = [volume.Id],
                     Data = new Dictionary<string, object>
                     {

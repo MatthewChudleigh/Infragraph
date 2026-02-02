@@ -46,6 +46,8 @@ public sealed class ResourceTypeInfo
 /// </summary>
 public static class SupportedResourceTypes
 {
+    public const string LoadBalancer = "elbv2.loadbalancer";
+    
     /// <summary>
     /// All supported resource types.
     /// </summary>
@@ -69,7 +71,7 @@ public static class SupportedResourceTypes
         ["lambda.function"] = new() { Type = "lambda.function", DisplayName = "Lambda Function", Service = "lambda", Category = "Compute", Color = "#FF9900" },
 
         // Load Balancing
-        ["elbv2.loadbalancer"] = new() { Type = "elbv2.loadbalancer", DisplayName = "Load Balancer", Service = "elbv2", Category = "Networking", Color = "#8C4FFF" },
+        [LoadBalancer] = new() { Type = LoadBalancer, DisplayName = "Load Balancer", Service = "elbv2", Category = "Networking", Color = "#8C4FFF" },
         ["elbv2.targetgroup"] = new() { Type = "elbv2.targetgroup", DisplayName = "Target Group", Service = "elbv2", Category = "Networking", Color = "#8C4FFF" },
         ["elbv2.listener"] = new() { Type = "elbv2.listener", DisplayName = "Listener", Service = "elbv2", Category = "Networking", Color = "#8C4FFF" },
 

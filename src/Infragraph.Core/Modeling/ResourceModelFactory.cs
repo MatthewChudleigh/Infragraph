@@ -1,3 +1,5 @@
+using Infragraph.Common.Configuration;
+
 namespace Infragraph.Core.Modeling;
 
 using System.Text.Json;
@@ -38,7 +40,7 @@ public sealed class ResourceModelFactory : IResourceModelFactory
         ["ecs.taskdefinition"] = new EcsTaskDefinitionHandler(),
 
         // Load Balancing
-        ["elbv2.loadbalancer"] = new LoadBalancerHandler(),
+        [SupportedResourceTypes.LoadBalancer] = new LoadBalancerHandler(),
         ["elbv2.targetgroup"] = new TargetGroupHandler(),
         ["elbv2.listener"] = new ListenerHandler(),
         ["elbv2.loadbalancerlistener"] = new ListenerHandler(),

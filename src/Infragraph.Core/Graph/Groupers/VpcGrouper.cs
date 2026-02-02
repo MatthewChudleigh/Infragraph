@@ -48,14 +48,6 @@ public sealed class VpcGrouper : IGroupingStrategy
             }
         }
 
-        // Helper to check if a node belongs to a VPC or subnet
-        bool NodeBelongsTo(string nodeId, string parentId)
-        {
-            return containedBy.GetValueOrDefault(nodeId) == parentId ||
-                   belongsTo.GetValueOrDefault(nodeId) == parentId ||
-                   (attachedTo.TryGetValue(nodeId, out var attached) && attached.Contains(parentId));
-        }
-
         // Find VPC nodes
         var vpcNodes = nodeList.Where(n => n.ResourceType == "ec2.vpc").ToList();
 
@@ -102,24 +94,23 @@ public sealed class VpcGrouper : IGroupingStrategy
                     nodesInSubnets.Add(nodeId);
                 }
 
-                if (resourcesInSubnet.Count > 0)
+                if (resourcesInSubnet.Count <= 0) continue;
+                
+                var subnetGroup = new NodeGroup
                 {
-                    var subnetGroup = new NodeGroup
+                    Id = $"group-{subnet.Id}",
+                    Label = subnet.Label,
+                    GroupType = "subnet",
+                    ParentId = $"group-{vpc.Id}",
+                    NodeIds = resourcesInSubnet,
+                    Data = new Dictionary<string, object>
                     {
-                        Id = $"group-{subnet.Id}",
-                        Label = subnet.Label,
-                        GroupType = "subnet",
-                        ParentId = $"group-{vpc.Id}",
-                        NodeIds = resourcesInSubnet,
-                        Data = new Dictionary<string, object>
-                        {
-                            ["resourceId"] = subnet.Id
-                        }
-                    };
+                        ["resourceId"] = subnet.Id
+                    }
+                };
 
-                    subnetGroups.Add(subnetGroup);
-                    subnetGroupIds.Add(subnetGroup.Id);
-                }
+                subnetGroups.Add(subnetGroup);
+                subnetGroupIds.Add(subnetGroup.Id);
             }
 
             // Find security groups that belong to this VPC
@@ -170,6 +161,16 @@ public sealed class VpcGrouper : IGroupingStrategy
             {
                 yield return subnetGroup;
             }
+        }
+
+        yield break;
+
+        // Helper to check if a node belongs to a VPC or subnet
+        bool NodeBelongsTo(string nodeId, string parentId)
+        {
+            return containedBy.GetValueOrDefault(nodeId) == parentId ||
+                   belongsTo.GetValueOrDefault(nodeId) == parentId ||
+                   (attachedTo.TryGetValue(nodeId, out var attached) && attached.Contains(parentId));
         }
     }
 }

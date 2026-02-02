@@ -53,33 +53,16 @@ public sealed class GraphBuilder : IGraphBuilder
         }
 
         // Apply grouping strategies
-        var groups = ApplyGrouping(groupingStrategies, nodes, edges, options);
-
-        // Remove nodes that are now represented as groups (VPCs, Subnets)
-        // These resources are containers, not individual nodes
-        var groupResourceIds = groups
-            .Where(g => g.Data.ContainsKey("resourceId"))
-            .Select(g => g.Data["resourceId"].ToString())
-            .Where(id => id != null)
-            .ToHashSet();
-
-        if (groupResourceIds.Count > 0)
-        {
-            nodes = nodes.Where(n => !groupResourceIds.Contains(n.Id)).ToList();
-
-            // Also remove edges that connect to/from these group resources
-            edges = edges.Where(e =>
-                !groupResourceIds.Contains(e.Source) &&
-                !groupResourceIds.Contains(e.Target)).ToList();
-        }
+        var (finalNodes, finalEdges, groups) = 
+            ApplyGrouping(groupingStrategies, nodes, edges, options);
 
         // Build metadata
-        var metadata = BuildMetadata(resourceList, relationshipList, nodes, options);
+        var metadata = BuildMetadata(resourceList, relationshipList, finalNodes, options);
 
         return new InfraGraph
         {
-            Nodes = nodes,
-            Edges = edges,
+            Nodes = finalNodes,
+            Edges = finalEdges,
             Groups = groups,
             Metadata = metadata
         };
@@ -139,7 +122,7 @@ public sealed class GraphBuilder : IGraphBuilder
         return edges;
     }
 
-    private static List<NodeGroup> ApplyGrouping(
+    private static (List<GraphNode>, List<GraphEdge>, List<NodeGroup>) ApplyGrouping(
         IEnumerable<IGroupingStrategy> groupingStrategies,
         List<GraphNode> nodes,
         List<GraphEdge> edges,
@@ -200,8 +183,27 @@ public sealed class GraphBuilder : IGraphBuilder
             }
         }
 
-        // Filter out affinity hint groups from final output
-        return allGroups.Where(g => g.GroupType != "affinity-hint").ToList();
+        {
+            // Filter out affinity hint groups from final output
+            var groups = allGroups.Where(g => g.GroupType != "affinity-hint").ToList();
+
+            // Remove nodes that are now represented as groups (VPCs, Subnets)
+            // These resources are containers, not individual nodes
+            var groupResourceIds = groups
+                .Where(g => g.Data.ContainsKey("resourceId"))
+                .Select(g => g.Data["resourceId"].ToString())
+                .Where(id => id != null)
+                .ToHashSet();
+
+            nodes = nodes.Where(n => !groupResourceIds.Contains(n.Id)).ToList();
+
+            // Also remove edges that connect to/from these group resources
+            edges = edges.Where(e =>
+                !groupResourceIds.Contains(e.Source) &&
+                !groupResourceIds.Contains(e.Target)).ToList();
+
+            return (nodes, edges, groups);
+        }
     }
 
     private static GraphMetadata BuildMetadata(

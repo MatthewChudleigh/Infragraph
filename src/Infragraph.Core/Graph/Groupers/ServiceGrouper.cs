@@ -1,4 +1,5 @@
 using Infragraph.Common.Abstractions;
+using Infragraph.Common.Configuration;
 using Infragraph.Common.Models.Domain;
 using Infragraph.Common.Models.Graph;
 
@@ -58,54 +59,59 @@ public sealed class ServiceGrouper : IGroupingStrategy
                 .Where(n => n.ResourceType == "ecs.service" && containedBy.GetValueOrDefault(n.Id) == cluster.Id)
                 .ToList();
 
-            if (servicesInCluster.Count > 0)
+            if (servicesInCluster.Count <= 0) continue;
+
+            var taskDefIds = ExtractTaskDefIds(nodes, usesRelationships, servicesInCluster);
+            var serviceIds = servicesInCluster.Select(n => n.Id).ToList();
+            var groupNodeIds = serviceIds.Concat(taskDefIds).Distinct().ToList();
+
+            yield return new NodeGroup
             {
-                var serviceIds = servicesInCluster.Select(n => n.Id).ToList();
-
-                // Find task definitions used by these services
-                var taskDefIds = new List<string>();
-                foreach (var service in servicesInCluster)
+                Id = $"group-cluster-{cluster.Id}",
+                Label = cluster.Label,
+                GroupType = "ecs-cluster",
+                NodeIds = groupNodeIds,
+                Data = new Dictionary<string, object>
                 {
-                    if (usesRelationships.TryGetValue(service.Id, out var usedResources))
-                    {
-                        var taskDefs = usedResources
-                            .Where(id => nodes.Any(n => n.Id == id && n.ResourceType == "ecs.taskdefinition"))
-                            .ToList();
-                        taskDefIds.AddRange(taskDefs);
-                    }
+                    ["resourceId"] = cluster.Id
                 }
-
-                // Combine services and their task definitions
-                var groupNodeIds = serviceIds.Concat(taskDefIds).Distinct().ToList();
-
-                yield return new NodeGroup
-                {
-                    Id = $"group-cluster-{cluster.Id}",
-                    Label = cluster.Label,
-                    GroupType = "ecs-cluster",
-                    NodeIds = groupNodeIds,
-                    Data = new Dictionary<string, object>
-                    {
-                        ["resourceId"] = cluster.Id
-                    }
-                };
-            }
+            };
         }
+    }
+
+    private static List<string> ExtractTaskDefIds(
+        List<GraphNode> nodes, 
+        Dictionary<string, List<string>> usesRelationships, 
+        List<GraphNode> servicesInCluster)
+    {
+        // Find task definitions used by these services
+        var taskDefIds = new List<string>();
+        foreach (var service in servicesInCluster)
+        {
+            if (!usesRelationships.TryGetValue(service.Id, out var usedResources)) continue;
+                    
+            var taskDefs = usedResources
+                .Where(id => nodes.Any(n => n.Id == id && n.ResourceType == "ecs.taskdefinition"))
+                .ToList();
+            taskDefIds.AddRange(taskDefs);
+        }
+
+        // Combine services and their task definitions
+        return taskDefIds;
     }
 
     private static IEnumerable<NodeGroup> GroupLoadBalancers(
         List<GraphNode> nodes,
         List<GraphEdge> edges)
     {
-        var lbNodes = nodes.Where(n => n.ResourceType == "elbv2.loadbalancer").ToList();
+        var lbNodes = nodes.Where(n => n.ResourceType == SupportedResourceTypes.LoadBalancer).ToList();
 
         foreach (var lb in lbNodes)
         {
             // Find listeners for this LB
             var listeners = edges
                 .Where(e => e.Target == lb.Id &&
-                           (e.RelationshipType == RelationshipType.BelongsTo ||
-                            e.RelationshipType == RelationshipType.ListensFor))
+                           e.RelationshipType is RelationshipType.BelongsTo or RelationshipType.ListensFor)
                 .Select(e => e.Source)
                 .Where(id => nodes.Any(n => n.Id == id && n.ResourceType.Contains("listener")))
                 .ToList();
