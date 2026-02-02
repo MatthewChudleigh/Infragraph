@@ -1,7 +1,7 @@
 namespace Infragraph.Core.Layout.Groupers;
 
-using Infragraph.Common.Abstractions;
-using Infragraph.Common.Models.Domain;
+using Common.Abstractions;
+using Common.Models.Domain;
 using Infragraph.Common.Models.Graph;
 
 /// <summary>
@@ -25,7 +25,7 @@ public sealed class AffinityGrouper : IGroupingStrategy
         foreach (var edge in edgeList.Where(e => e.RelationshipType == RelationshipType.Uses))
         {
             if (!usedBy.ContainsKey(edge.Target))
-                usedBy[edge.Target] = new List<string>();
+                usedBy[edge.Target] = [];
             usedBy[edge.Target].Add(edge.Source);
         }
 
@@ -34,7 +34,7 @@ public sealed class AffinityGrouper : IGroupingStrategy
         foreach (var edge in edgeList.Where(e => e.RelationshipType == RelationshipType.AttachedTo))
         {
             if (!attachedTo.ContainsKey(edge.Source))
-                attachedTo[edge.Source] = new List<string>();
+                attachedTo[edge.Source] = [];
             attachedTo[edge.Source].Add(edge.Target);
         }
 
@@ -59,25 +59,23 @@ public sealed class AffinityGrouper : IGroupingStrategy
 
         foreach (var sg in securityGroups)
         {
-            if (usedBy.TryGetValue(sg.Id, out var users) && users.Count == 1)
+            if (!usedBy.TryGetValue(sg.Id, out var users) || users.Count != 1) continue;
+            var consumerId = users[0];
+            // Verify the consumer exists in our node list
+            if (nodes.Any(n => n.Id == consumerId))
             {
-                var consumerId = users[0];
-                // Verify the consumer exists in our node list
-                if (nodes.Any(n => n.Id == consumerId))
+                yield return new NodeGroup
                 {
-                    yield return new NodeGroup
+                    Id = $"affinity-sg-{sg.Id}",
+                    Label = sg.Label,
+                    GroupType = "affinity-hint",
+                    NodeIds = [sg.Id],
+                    Data = new Dictionary<string, object>
                     {
-                        Id = $"affinity-sg-{sg.Id}",
-                        Label = sg.Label,
-                        GroupType = "affinity-hint",
-                        NodeIds = [sg.Id],
-                        Data = new Dictionary<string, object>
-                        {
-                            ["affinityTarget"] = consumerId,
-                            ["resourceType"] = "securitygroup"
-                        }
-                    };
-                }
+                        ["affinityTarget"] = consumerId,
+                        ["resourceType"] = "securitygroup"
+                    }
+                };
             }
         }
     }
@@ -90,25 +88,23 @@ public sealed class AffinityGrouper : IGroupingStrategy
 
         foreach (var profile in instanceProfiles)
         {
-            if (usedBy.TryGetValue(profile.Id, out var users) && users.Count == 1)
+            if (!usedBy.TryGetValue(profile.Id, out var users) || users.Count != 1) continue;
+            var consumerId = users[0];
+            // Verify the consumer exists in our node list
+            if (nodes.Any(n => n.Id == consumerId))
             {
-                var consumerId = users[0];
-                // Verify the consumer exists in our node list
-                if (nodes.Any(n => n.Id == consumerId))
+                yield return new NodeGroup
                 {
-                    yield return new NodeGroup
+                    Id = $"affinity-profile-{profile.Id}",
+                    Label = profile.Label,
+                    GroupType = "affinity-hint",
+                    NodeIds = [profile.Id],
+                    Data = new Dictionary<string, object>
                     {
-                        Id = $"affinity-profile-{profile.Id}",
-                        Label = profile.Label,
-                        GroupType = "affinity-hint",
-                        NodeIds = [profile.Id],
-                        Data = new Dictionary<string, object>
-                        {
-                            ["affinityTarget"] = consumerId,
-                            ["resourceType"] = "instanceprofile"
-                        }
-                    };
-                }
+                        ["affinityTarget"] = consumerId,
+                        ["resourceType"] = "instanceprofile"
+                    }
+                };
             }
         }
     }
@@ -121,25 +117,23 @@ public sealed class AffinityGrouper : IGroupingStrategy
 
         foreach (var volume in volumes)
         {
-            if (attachedTo.TryGetValue(volume.Id, out var instances) && instances.Count == 1)
+            if (!attachedTo.TryGetValue(volume.Id, out var instances) || instances.Count != 1) continue;
+            var instanceId = instances[0];
+            // Verify the instance exists in our node list
+            if (nodes.Any(n => n.Id == instanceId))
             {
-                var instanceId = instances[0];
-                // Verify the instance exists in our node list
-                if (nodes.Any(n => n.Id == instanceId))
+                yield return new NodeGroup
                 {
-                    yield return new NodeGroup
+                    Id = $"affinity-volume-{volume.Id}",
+                    Label = volume.Label,
+                    GroupType = "affinity-hint",
+                    NodeIds = [volume.Id],
+                    Data = new Dictionary<string, object>
                     {
-                        Id = $"affinity-volume-{volume.Id}",
-                        Label = volume.Label,
-                        GroupType = "affinity-hint",
-                        NodeIds = [volume.Id],
-                        Data = new Dictionary<string, object>
-                        {
-                            ["affinityTarget"] = instanceId,
-                            ["resourceType"] = "volume"
-                        }
-                    };
-                }
+                        ["affinityTarget"] = instanceId,
+                        ["resourceType"] = "volume"
+                    }
+                };
             }
         }
     }

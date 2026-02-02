@@ -1,9 +1,9 @@
 namespace Infragraph.Server.Endpoints;
 
 using System.Text.Json;
-using Infragraph.Common.Abstractions;
+using Common.Abstractions;
 using Infragraph.Common.Configuration;
-using Infragraph.Common.Models.ReactFlow;
+using Common.Models.ReactFlow;
 
 /// <summary>
 /// API endpoints for diagram generation.

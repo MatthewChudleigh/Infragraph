@@ -1,7 +1,7 @@
 namespace Infragraph.Common.Abstractions;
 
-using Infragraph.Common.Configuration;
-using Infragraph.Common.Models.Graph;
+using Configuration;
+using Models.Graph;
 
 /// <summary>
 /// Renders an infrastructure graph to a specific output format.

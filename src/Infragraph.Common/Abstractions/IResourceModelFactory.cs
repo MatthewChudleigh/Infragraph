@@ -1,7 +1,7 @@
 namespace Infragraph.Common.Abstractions;
 
-using Infragraph.Common.Models.Domain;
-using Infragraph.Common.Models.Former2;
+using Models.Domain;
+using Models.Former2;
 
 /// <summary>
 /// Factory for creating typed AWS resource models from raw Former2 resources.

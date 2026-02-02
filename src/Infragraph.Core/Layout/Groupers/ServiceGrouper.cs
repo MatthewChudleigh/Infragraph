@@ -1,7 +1,7 @@
 namespace Infragraph.Core.Layout.Groupers;
 
-using Infragraph.Common.Abstractions;
-using Infragraph.Common.Models.Domain;
+using Common.Abstractions;
+using Common.Models.Domain;
 using Infragraph.Common.Models.Graph;
 
 /// <summary>
@@ -31,7 +31,7 @@ public sealed class ServiceGrouper : IGroupingStrategy
         foreach (var edge in edgeList.Where(e => e.RelationshipType == RelationshipType.Uses))
         {
             if (!usesRelationships.ContainsKey(edge.Source))
-                usesRelationships[edge.Source] = new List<string>();
+                usesRelationships[edge.Source] = [];
             usesRelationships[edge.Source].Add(edge.Target);
         }
 

@@ -111,11 +111,9 @@ public sealed class PngExporter
         using var font = new SKFont(
             SKTypeface.FromFamilyName("Arial", SKFontStyleWeight.SemiBold, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright),
             18);
-        using var paint = new SKPaint
-        {
-            Color = SKColors.Black.WithAlpha(200),
-            IsAntialias = true
-        };
+        using var paint = new SKPaint();
+        paint.Color = SKColors.Black.WithAlpha(200);
+        paint.IsAntialias = true;
 
         var x = (float)(bounds.MinX);
         var y = (float)(bounds.MinY - options.Padding / 2 + 5);
@@ -126,11 +124,9 @@ public sealed class PngExporter
     private static void DrawMetadata(SKCanvas canvas, ReactFlowMetadata metadata, DiagramBounds bounds, ExportOptions options)
     {
         using var font = new SKFont(SKTypeface.FromFamilyName("Arial"), 11);
-        using var paint = new SKPaint
-        {
-            Color = SKColors.Gray,
-            IsAntialias = true
-        };
+        using var paint = new SKPaint();
+        paint.Color = SKColors.Gray;
+        paint.IsAntialias = true;
 
         var text = $"Resources: {metadata.IncludedResources} | Relationships: {metadata.TotalRelationships} | Generated: {metadata.GeneratedAt:yyyy-MM-dd HH:mm:ss} UTC";
         var x = (float)(bounds.MinX);
@@ -150,22 +146,18 @@ public sealed class PngExporter
         var rect = new SKRect(x, y, x + width, y + height);
 
         // Draw background
-        using var bgPaint = new SKPaint
-        {
-            Color = style.BackgroundColor,
-            Style = SKPaintStyle.Fill,
-            IsAntialias = true
-        };
+        using var bgPaint = new SKPaint();
+        bgPaint.Color = style.BackgroundColor;
+        bgPaint.Style = SKPaintStyle.Fill;
+        bgPaint.IsAntialias = true;
         canvas.DrawRoundRect(rect, style.BorderRadius, style.BorderRadius, bgPaint);
 
         // Draw border
-        using var borderPaint = new SKPaint
-        {
-            Color = style.BorderColor,
-            Style = SKPaintStyle.Stroke,
-            StrokeWidth = style.BorderWidth,
-            IsAntialias = true
-        };
+        using var borderPaint = new SKPaint();
+        borderPaint.Color = style.BorderColor;
+        borderPaint.Style = SKPaintStyle.Stroke;
+        borderPaint.StrokeWidth = style.BorderWidth;
+        borderPaint.IsAntialias = true;
 
         if (style.IsDashed)
         {
@@ -178,11 +170,9 @@ public sealed class PngExporter
         using var font = new SKFont(
             SKTypeface.FromFamilyName("Arial", SKFontStyleWeight.Medium, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright),
             11);
-        using var textPaint = new SKPaint
-        {
-            Color = SKColor.Parse("#555555"),
-            IsAntialias = true
-        };
+        using var textPaint = new SKPaint();
+        textPaint.Color = SKColor.Parse("#555555");
+        textPaint.IsAntialias = true;
 
         canvas.DrawText(node.Data.Label, x + 10, y + 18, SKTextAlign.Left, font, textPaint);
     }
@@ -198,52 +188,42 @@ public sealed class PngExporter
         var rect = new SKRect(x, y, x + width, y + height);
 
         // Draw shadow
-        using var shadowPaint = new SKPaint
-        {
-            Color = SKColors.Black.WithAlpha(25),
-            Style = SKPaintStyle.Fill,
-            IsAntialias = true,
-            MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 2)
-        };
+        using var shadowPaint = new SKPaint();
+        shadowPaint.Color = SKColors.Black.WithAlpha(25);
+        shadowPaint.Style = SKPaintStyle.Fill;
+        shadowPaint.IsAntialias = true;
+        shadowPaint.MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 2);
         var shadowRect = new SKRect(x + 1, y + 1, x + width + 1, y + height + 1);
         canvas.DrawRoundRect(shadowRect, 4, 4, shadowPaint);
 
         // Draw background
-        using var bgPaint = new SKPaint
-        {
-            Color = SKColors.White,
-            Style = SKPaintStyle.Fill,
-            IsAntialias = true
-        };
+        using var bgPaint = new SKPaint();
+        bgPaint.Color = SKColors.White;
+        bgPaint.Style = SKPaintStyle.Fill;
+        bgPaint.IsAntialias = true;
         canvas.DrawRoundRect(rect, 4, 4, bgPaint);
 
         // Draw border
-        using var borderPaint = new SKPaint
-        {
-            Color = borderColor,
-            Style = SKPaintStyle.Stroke,
-            StrokeWidth = 2,
-            IsAntialias = true
-        };
+        using var borderPaint = new SKPaint();
+        borderPaint.Color = borderColor;
+        borderPaint.Style = SKPaintStyle.Stroke;
+        borderPaint.StrokeWidth = 2;
+        borderPaint.IsAntialias = true;
         canvas.DrawRoundRect(rect, 4, 4, borderPaint);
 
         // Draw service indicator bar
-        using var barPaint = new SKPaint
-        {
-            Color = borderColor,
-            Style = SKPaintStyle.Fill,
-            IsAntialias = true
-        };
+        using var barPaint = new SKPaint();
+        barPaint.Color = borderColor;
+        barPaint.Style = SKPaintStyle.Fill;
+        barPaint.IsAntialias = true;
         var barRect = new SKRect(x, y, x + 4, y + height);
         canvas.DrawRoundRect(barRect, 4, 0, barPaint);
 
         // Draw label
         using var labelFont = new SKFont(SKTypeface.FromFamilyName("Arial"), 12);
-        using var labelPaint = new SKPaint
-        {
-            Color = SKColor.Parse("#333333"),
-            IsAntialias = true
-        };
+        using var labelPaint = new SKPaint();
+        labelPaint.Color = SKColor.Parse("#333333");
+        labelPaint.IsAntialias = true;
 
         var label = TruncateLabel(node.Data.Label, 28);
         var labelY = y + height / 2 - 6;
@@ -251,11 +231,9 @@ public sealed class PngExporter
 
         // Draw resource type
         using var typeFont = new SKFont(SKTypeface.FromFamilyName("Arial"), 10);
-        using var typePaint = new SKPaint
-        {
-            Color = SKColor.Parse("#666666"),
-            IsAntialias = true
-        };
+        using var typePaint = new SKPaint();
+        typePaint.Color = SKColor.Parse("#666666");
+        typePaint.IsAntialias = true;
 
         var resourceType = node.Data.ResourceType ?? "resource";
         var typeY = y + height / 2 + 10;
@@ -319,14 +297,12 @@ public sealed class PngExporter
                 (float)adjustedTargetX, (float)adjustedTargetY);
         }
 
-        using var paint = new SKPaint
-        {
-            Color = edgeColor,
-            Style = SKPaintStyle.Stroke,
-            StrokeWidth = strokeWidth,
-            IsAntialias = true,
-            StrokeCap = SKStrokeCap.Round
-        };
+        using var paint = new SKPaint();
+        paint.Color = edgeColor;
+        paint.Style = SKPaintStyle.Stroke;
+        paint.StrokeWidth = strokeWidth;
+        paint.IsAntialias = true;
+        paint.StrokeCap = SKStrokeCap.Round;
 
         // Apply dash pattern for certain relationship types
         var relType = edge.Data?.RelationshipType?.ToLowerInvariant();
@@ -396,11 +372,9 @@ public sealed class PngExporter
 
         // Draw text
         using var font = new SKFont(SKTypeface.FromFamilyName("Arial"), 10);
-        using var textPaint = new SKPaint
-        {
-            Color = SKColor.Parse("#666666"),
-            IsAntialias = true
-        };
+        using var textPaint = new SKPaint();
+        textPaint.Color = SKColor.Parse("#666666");
+        textPaint.IsAntialias = true;
 
         canvas.DrawText(label, midX, midY + 4, SKTextAlign.Center, font, textPaint);
     }

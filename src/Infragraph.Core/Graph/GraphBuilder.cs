@@ -1,8 +1,8 @@
 namespace Infragraph.Core.Graph;
 
-using Infragraph.Common.Abstractions;
-using Infragraph.Common.Configuration;
-using Infragraph.Common.Models.Domain;
+using Common.Abstractions;
+using Common.Configuration;
+using Common.Models.Domain;
 using Infragraph.Common.Models.Graph;
 
 /// <summary>
@@ -56,7 +56,7 @@ public sealed class GraphBuilder : IGraphBuilder
         // These resources are containers, not individual nodes
         var groupResourceIds = groups
             .Where(g => g.Data.ContainsKey("resourceId"))
-            .Select(g => g.Data["resourceId"]?.ToString())
+            .Select(g => g.Data["resourceId"].ToString())
             .Where(id => id != null)
             .ToHashSet();
 
@@ -84,24 +84,11 @@ public sealed class GraphBuilder : IGraphBuilder
 
     private static List<GraphNode> BuildNodes(List<AwsResource> resources, DiagramOptions options)
     {
-        var nodes = new List<GraphNode>();
-
-        foreach (var resource in resources)
-        {
-            // Apply type filters
-            if (options.IncludeTypes.Count > 0 && !options.IncludeTypes.Contains(resource.Type))
-                continue;
-
-            if (options.ExcludeTypes.Contains(resource.Type))
-                continue;
-
-            // Apply region filters
-            if (options.IncludeRegions.Count > 0 &&
-                !string.IsNullOrEmpty(resource.Region) &&
-                !options.IncludeRegions.Contains(resource.Region))
-                continue;
-
-            var node = new GraphNode
+        return (from resource in resources
+            where options.IncludeTypes.Count <= 0 || options.IncludeTypes.Contains(resource.Type)
+            where !options.ExcludeTypes.Contains(resource.Type)
+            where options.IncludeRegions.Count <= 0 || string.IsNullOrEmpty(resource.Region) || options.IncludeRegions.Contains(resource.Region)
+            select new GraphNode
             {
                 Id = resource.Id,
                 Label = resource.DisplayName,
@@ -111,50 +98,38 @@ public sealed class GraphBuilder : IGraphBuilder
                 Height = options.DefaultNodeHeight,
                 Data = new Dictionary<string, object>
                 {
-                    ["arn"] = resource.Arn ?? resource.Id,
-                    ["region"] = resource.Region ?? "global",
+                    ["arn"] = resource.Arn ?? resource.Id, 
+                    ["region"] = resource.Region ?? "global", 
                     ["tags"] = resource.Tags
                 }
-            };
-
-            nodes.Add(node);
-        }
-
-        return nodes;
+            }).ToList();
     }
 
     private static List<GraphEdge> BuildEdges(
         List<ResourceRelationship> relationships,
         Dictionary<string, GraphNode> nodeIndex,
-        DiagramOptions options)
+        DiagramOptions options) // TODO: options?
     {
         var edges = new List<GraphEdge>();
         var seenEdges = new HashSet<string>();
 
-        foreach (var rel in relationships)
+        foreach (var edge in from rel in relationships 
+                 where nodeIndex.ContainsKey(rel.SourceId) && nodeIndex.ContainsKey(rel.TargetId) 
+                 let edgeKey = $"{rel.SourceId}|{rel.TargetId}|{rel.RelationshipType}" 
+                 where seenEdges.Add(edgeKey) 
+                 select new GraphEdge
+                 {
+                     Id = $"e-{edges.Count}",
+                     Source = rel.SourceId,
+                     Target = rel.TargetId,
+                     Label = rel.Label,
+                     RelationshipType = rel.RelationshipType,
+                     Data = new Dictionary<string, object>
+                     {
+                         ["relationshipType"] = rel.RelationshipType.ToString()
+                     }
+                 })
         {
-            // Only include edges where both nodes exist
-            if (!nodeIndex.ContainsKey(rel.SourceId) || !nodeIndex.ContainsKey(rel.TargetId))
-                continue;
-
-            // Skip duplicate edges (same source, target, and type)
-            var edgeKey = $"{rel.SourceId}|{rel.TargetId}|{rel.RelationshipType}";
-            if (!seenEdges.Add(edgeKey))
-                continue;
-
-            var edge = new GraphEdge
-            {
-                Id = $"e-{edges.Count}",
-                Source = rel.SourceId,
-                Target = rel.TargetId,
-                Label = rel.Label,
-                RelationshipType = rel.RelationshipType,
-                Data = new Dictionary<string, object>
-                {
-                    ["relationshipType"] = rel.RelationshipType.ToString()
-                }
-            };
-
             edges.Add(edge);
         }
 
@@ -179,10 +154,9 @@ public sealed class GraphBuilder : IGraphBuilder
             // Update node parent IDs based on grouping (skip affinity hints for now)
             foreach (var group in groups.Where(g => g.GroupType != "affinity-hint"))
             {
-                foreach (var nodeId in group.NodeIds)
+                foreach (var node in group.NodeIds.Select(nodeId => nodes.FirstOrDefault(n => n.Id == nodeId)))
                 {
-                    var node = nodes.FirstOrDefault(n => n.Id == nodeId);
-                    if (node != null && node.ParentId == null)
+                    if (node is { ParentId: null })
                     {
                         node.ParentId = group.Id;
                     }
@@ -211,15 +185,13 @@ public sealed class GraphBuilder : IGraphBuilder
             foreach (var nodeId in hint.NodeIds)
             {
                 var node = nodes.FirstOrDefault(n => n.Id == nodeId);
-                if (node != null)
-                {
-                    node.ParentId = parentGroup.Id;
+                if (node == null) continue;
+                node.ParentId = parentGroup.Id;
 
-                    // Add to parent group's node list if not already there
-                    if (!parentGroup.NodeIds.Contains(nodeId))
-                    {
-                        parentGroup.NodeIds.Add(nodeId);
-                    }
+                // Add to parent group's node list if not already there
+                if (!parentGroup.NodeIds.Contains(nodeId))
+                {
+                    parentGroup.NodeIds.Add(nodeId);
                 }
             }
         }
@@ -232,7 +204,7 @@ public sealed class GraphBuilder : IGraphBuilder
         List<AwsResource> allResources,
         List<ResourceRelationship> allRelationships,
         List<GraphNode> includedNodes,
-        DiagramOptions options)
+        DiagramOptions options) // TODO: options?
     {
         return new GraphMetadata
         {

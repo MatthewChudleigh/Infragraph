@@ -2,19 +2,14 @@ namespace Infragraph.Core.Parsing;
 
 using System.Runtime.CompilerServices;
 using System.Text.Json;
-using Infragraph.Common.Abstractions;
-using Infragraph.Common.Models.Former2;
+using Common.Abstractions;
+using Common.Models.Former2;
 
 /// <summary>
 /// Parses Former2 JSON export files.
 /// </summary>
 public sealed class Former2Parser : IResourceParser
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true
-    };
-
     /// <inheritdoc />
     public async IAsyncEnumerable<Former2Resource> ParseAsync(
         Stream json,

@@ -1,7 +1,7 @@
 namespace Infragraph.Common.Abstractions;
 
-using Infragraph.Common.Configuration;
-using Infragraph.Common.Models.ReactFlow;
+using Configuration;
+using Models.ReactFlow;
 
 /// <summary>
 /// Orchestrates the complete diagram generation pipeline.

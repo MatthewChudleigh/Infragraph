@@ -1,9 +1,9 @@
 namespace Infragraph.Server.Endpoints;
 
 using System.Text.Json;
-using Infragraph.Common.Models.Export;
-using Infragraph.Common.Models.ReactFlow;
-using Infragraph.Rendering.Export;
+using Common.Models.Export;
+using Common.Models.ReactFlow;
+using Rendering.Export;
 
 /// <summary>
 /// API endpoints for exporting diagrams.
@@ -98,14 +98,14 @@ public static class ExportEndpoints
         }
     }
 
+    private static readonly JsonSerializerOptions Options = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+    
     private static async Task<ExportRequest> ParseExportRequest(Stream body, CancellationToken cancellationToken)
     {
-        var options = new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true
-        };
-
-        var request = await JsonSerializer.DeserializeAsync<ExportRequest>(body, options, cancellationToken);
+        var request = await JsonSerializer.DeserializeAsync<ExportRequest>(body, Options, cancellationToken);
 
         if (request == null)
         {

@@ -4,7 +4,11 @@ A modular C# data processing pipeline that transforms Former2 AWS infrastructure
 
 ## Overview
 
-Infragraph parses AWS infrastructure data exported from [Former2](https://former2.com), extracts relationships between resources, builds a graph model with hierarchical grouping, and renders it to React Flow format for visualization.
+Infragraph parses AWS infrastructure data exported from [Former2](https://former2.com). 
+
+- extracts relationships between resources
+- builds a graph model with hierarchical grouping
+- renders it to React Flow format for visualization
 
 ```
 Former2 JSON → Parse → Model → Extract Relations → Build Graph → Render → React Flow Diagram

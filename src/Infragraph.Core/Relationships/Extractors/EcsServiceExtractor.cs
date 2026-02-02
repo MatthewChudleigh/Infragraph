@@ -1,7 +1,7 @@
 namespace Infragraph.Core.Relationships.Extractors;
 
-using Infragraph.Common.Abstractions;
-using Infragraph.Common.Models.Domain;
+using Common.Abstractions;
+using Common.Models.Domain;
 
 /// <summary>
 /// Extracts ECS service relationships (cluster, task definition, subnets, security groups, load balancers).

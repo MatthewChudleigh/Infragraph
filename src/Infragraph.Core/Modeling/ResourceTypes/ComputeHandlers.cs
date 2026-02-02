@@ -1,8 +1,8 @@
 namespace Infragraph.Core.Modeling.ResourceTypes;
 
 using System.Text.Json;
-using Infragraph.Common.Models.Domain;
-using Infragraph.Common.Models.Former2;
+using Common.Models.Domain;
+using Common.Models.Former2;
 
 internal sealed class Ec2InstanceHandler : IResourceTypeHandler
 {

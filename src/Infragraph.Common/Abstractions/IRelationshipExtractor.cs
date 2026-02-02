@@ -1,6 +1,6 @@
 namespace Infragraph.Common.Abstractions;
 
-using Infragraph.Common.Models.Domain;
+using Models.Domain;
 
 /// <summary>
 /// Extracts relationships between AWS resources.

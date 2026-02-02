@@ -1,6 +1,6 @@
 namespace Infragraph.Common.Models.Graph;
 
-using Infragraph.Common.Models.Domain;
+using Domain;
 
 /// <summary>
 /// Represents an edge (connection) in the infrastructure graph.

@@ -1,6 +1,6 @@
 namespace Infragraph.Common.Abstractions;
 
-using Infragraph.Common.Models.Former2;
+using Models.Former2;
 
 /// <summary>
 /// Parses Former2 JSON export files into structured resource objects.

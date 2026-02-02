@@ -1,7 +1,7 @@
 namespace Infragraph.Common.Models.Export;
 
 using System.Text.Json.Serialization;
-using Infragraph.Common.Models.ReactFlow;
+using ReactFlow;
 
 /// <summary>
 /// Request payload for exporting a diagram.

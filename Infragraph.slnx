@@ -1,12 +1,10 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Infragraph.AppHost/Infragraph.AppHost.csproj" />
     <Project Path="src/Infragraph.Common/Infragraph.Common.csproj" />
     <Project Path="src/Infragraph.Core/Infragraph.Core.csproj" />
     <Project Path="src/Infragraph.Rendering/Infragraph.Rendering.csproj" />
+    <Project Path="src/Infragraph.Server/Infragraph.Server.csproj" />
+    <Project Path="src/Infragraph.Web/Infragraph.Web.esproj" />
   </Folder>
-  <Project Path="src/Infragraph.AppHost/Infragraph.AppHost.csproj" />
-  <Project Path="src/Infragraph.Server/Infragraph.Server.csproj" />
-  <Project Path="src/Infragraph.Web/Infragraph.Web.esproj">
-    <Build />
-  </Project>
 </Solution>

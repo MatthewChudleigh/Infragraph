@@ -1,6 +1,6 @@
 namespace Infragraph.Common.Abstractions;
 
-using Infragraph.Common.Models.Graph;
+using Models.Graph;
 
 /// <summary>
 /// Strategy for grouping graph nodes into logical groups.

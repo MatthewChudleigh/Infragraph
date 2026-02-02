@@ -1,35 +1,21 @@
 namespace Infragraph.Core.Pipeline;
 
-using Infragraph.Common.Abstractions;
-using Infragraph.Common.Configuration;
-using Infragraph.Common.Models.Domain;
-using Infragraph.Common.Models.ReactFlow;
+using Common.Abstractions;
+using Common.Configuration;
+using Common.Models.Domain;
+using Common.Models.ReactFlow;
 
 /// <summary>
 /// Orchestrates the complete diagram generation pipeline.
 /// </summary>
-public sealed class DiagramPipeline : IDiagramPipeline
+public sealed class DiagramPipeline(
+    IResourceParser parser,
+    IGraphBuilder graphBuilder,
+    IResourceModelFactory modelFactory,
+    IEnumerable<IRelationshipExtractor> extractors,
+    IRenderer<ReactFlowDiagram> renderer)
+    : IDiagramPipeline
 {
-    private readonly IResourceParser _parser;
-    private readonly IResourceModelFactory _modelFactory;
-    private readonly IEnumerable<IRelationshipExtractor> _extractors;
-    private readonly IGraphBuilder _graphBuilder;
-    private readonly IRenderer<ReactFlowDiagram> _renderer;
-
-    public DiagramPipeline(
-        IResourceParser parser,
-        IResourceModelFactory modelFactory,
-        IEnumerable<IRelationshipExtractor> extractors,
-        IGraphBuilder graphBuilder,
-        IRenderer<ReactFlowDiagram> renderer)
-    {
-        _parser = parser;
-        _modelFactory = modelFactory;
-        _extractors = extractors;
-        _graphBuilder = graphBuilder;
-        _renderer = renderer;
-    }
-
     public async Task<ReactFlowDiagram> GenerateAsync(
         Stream jsonStream,
         DiagramOptions? options = null,
@@ -39,18 +25,13 @@ public sealed class DiagramPipeline : IDiagramPipeline
 
         // Step 1: Parse Former2 JSON
         var former2Resources = new List<Common.Models.Former2.Former2Resource>();
-        await foreach (var resource in _parser.ParseAsync(jsonStream, cancellationToken))
+        await foreach (var resource in parser.ParseAsync(jsonStream, cancellationToken))
         {
             former2Resources.Add(resource);
         }
 
         // Step 2: Convert to domain models
-        var resources = new List<AwsResource>();
-        foreach (var f2Resource in former2Resources)
-        {
-            var model = _modelFactory.CreateModel(f2Resource);
-            resources.Add(model);
-        }
+        var resources = former2Resources.Select(modelFactory.CreateModel).ToList();
 
         // Step 3: Build resource index for relationship extraction (handle duplicates)
         var resourceIndex = new Dictionary<string, AwsResource>();
@@ -66,7 +47,7 @@ public sealed class DiagramPipeline : IDiagramPipeline
         var relationships = new List<ResourceRelationship>();
         foreach (var resource in resources)
         {
-            foreach (var extractor in _extractors)
+            foreach (var extractor in extractors)
             {
                 if (extractor.SupportedResourceTypes.Contains(resource.Type))
                 {
@@ -76,10 +57,10 @@ public sealed class DiagramPipeline : IDiagramPipeline
         }
 
         // Step 5: Build graph
-        var graph = _graphBuilder.BuildGraph(resources, relationships, options);
+        var graph = graphBuilder.BuildGraph(resources, relationships, options);
 
         // Step 6: Render to React Flow format
-        var diagram = _renderer.Render(graph, options);
+        var diagram = renderer.Render(graph, options);
 
         return diagram;
     }

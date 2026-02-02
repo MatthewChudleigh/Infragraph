@@ -1,8 +1,8 @@
 namespace Infragraph.Common.Abstractions;
 
-using Infragraph.Common.Configuration;
-using Infragraph.Common.Models.Domain;
-using Infragraph.Common.Models.Graph;
+using Configuration;
+using Models.Domain;
+using Models.Graph;
 
 /// <summary>
 /// Builds a graph model from AWS resources and their relationships.

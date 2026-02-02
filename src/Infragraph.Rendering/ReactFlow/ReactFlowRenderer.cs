@@ -1,9 +1,9 @@
 namespace Infragraph.Rendering.ReactFlow;
 
-using Infragraph.Common.Abstractions;
-using Infragraph.Common.Configuration;
-using Infragraph.Common.Models.Domain;
-using Infragraph.Common.Models.Graph;
+using Common.Abstractions;
+using Common.Configuration;
+using Common.Models.Domain;
+using Common.Models.Graph;
 using Infragraph.Common.Models.ReactFlow;
 
 /// <summary>

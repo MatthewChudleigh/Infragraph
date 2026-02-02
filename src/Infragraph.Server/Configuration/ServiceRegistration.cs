@@ -1,15 +1,15 @@
 namespace Infragraph.Server.Configuration;
 
-using Infragraph.Common.Abstractions;
-using Infragraph.Common.Models.ReactFlow;
-using Infragraph.Core.Graph;
-using Infragraph.Core.Layout.Groupers;
-using Infragraph.Core.Modeling;
-using Infragraph.Core.Parsing;
-using Infragraph.Core.Pipeline;
-using Infragraph.Core.Relationships.Extractors;
-using Infragraph.Rendering.Export;
-using Infragraph.Rendering.ReactFlow;
+using Common.Abstractions;
+using Common.Models.ReactFlow;
+using Core.Graph;
+using Core.Layout.Groupers;
+using Core.Modeling;
+using Core.Parsing;
+using Core.Pipeline;
+using Core.Relationships.Extractors;
+using Rendering.Export;
+using Rendering.ReactFlow;
 
 /// <summary>
 /// Extension methods for registering Infragraph services.

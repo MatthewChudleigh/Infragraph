@@ -1,7 +1,7 @@
 namespace Infragraph.Core.Layout.Groupers;
 
-using Infragraph.Common.Abstractions;
-using Infragraph.Common.Models.Domain;
+using Common.Abstractions;
+using Common.Models.Domain;
 using Infragraph.Common.Models.Graph;
 
 /// <summary>
@@ -42,7 +42,7 @@ public sealed class VpcGrouper : IGroupingStrategy
                 case RelationshipType.AttachedTo:
                     // Source attached to target
                     if (!attachedTo.ContainsKey(edge.Source))
-                        attachedTo[edge.Source] = new List<string>();
+                        attachedTo[edge.Source] = [];
                     attachedTo[edge.Source].Add(edge.Target);
                     break;
             }
