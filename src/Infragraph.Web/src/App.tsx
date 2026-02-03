@@ -14,7 +14,7 @@ function App() {
   const [filename, setFilename] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [options, setOptions] = useState<DiagramOptions>({
-    grouping: ['vpc', 'service'],
+    grouping: ['account', 'vpc', 'service'],
     showIsolated: false,
   });
 
@@ -129,6 +129,7 @@ function App() {
             <div className="options-panel">
               <h3 className="options-title">Options</h3>
 
+              <GroupingItem groupName={'Account'} groupKey={'account'} />
               <GroupingItem groupName={'VPC'} groupKey={'vpc'} />
               <GroupingItem groupName={'Service'} groupKey={'service'} />
               <GroupingItem groupName={'IAM'} groupKey={'iam'} />

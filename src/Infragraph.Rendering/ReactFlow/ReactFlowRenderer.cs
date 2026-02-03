@@ -30,7 +30,10 @@ public sealed class ReactFlowRenderer : IRenderer<ReactFlowDiagram>
     public ReactFlowDiagram Render(InfraGraph graph, DiagramOptions options)
     {
         // Create group nodes first (they need to be in the nodes array for React Flow)
-        var nodes = graph.Groups.Select(group => CreateGroupNode(group, options)).ToList();
+        var nodes = graph.Groups
+            .OrderBy(g => g.GroupType == "account" ? 0 : 1)
+            .Select(group => CreateGroupNode(group, options))
+            .ToList();
         // Create resource nodes
         nodes.AddRange(graph.Nodes.Select(node => CreateResourceNode(node, options)));
 
