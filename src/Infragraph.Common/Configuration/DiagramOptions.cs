@@ -21,9 +21,9 @@ public sealed record DiagramOptions
     public HashSet<string> IncludeRegions { get; init; } = [];
 
     /// <summary>
-    /// Grouping strategies to apply (e.g., "vpc", "service", "affinity", "iam").
+    /// Grouping strategies to apply (e.g., "account", "vpc", "service", "affinity", "iam").
     /// </summary>
-    public List<string> GroupingStrategies { get; init; } = ["vpc", "service", "affinity", "iam"];
+    public List<string> GroupingStrategies { get; init; } = ["account", "vpc", "service", "affinity", "iam"];
 
     /// <summary>
     /// Whether to show isolated nodes (nodes with no relationships).

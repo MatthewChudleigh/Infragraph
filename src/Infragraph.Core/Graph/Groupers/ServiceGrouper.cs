@@ -44,15 +44,20 @@ public sealed class ServiceGrouper : IGroupingStrategy
             var serviceIds = servicesInCluster.Select(n => n.Id).ToList();
             var groupNodeIds = serviceIds.Concat(taskDefIds).Distinct().ToList();
 
+            // Get the account for this cluster
+            var clusterAccount = cluster.Data.TryGetValue("account", out var acc) ? acc?.ToString() : null;
+
             yield return new NodeGroup
             {
                 Id = $"group-cluster-{cluster.Id}",
                 Label = cluster.Label,
                 GroupType = "ecs-cluster",
+                ParentId = !string.IsNullOrWhiteSpace(clusterAccount) ? AccountGrouper.GetAccountGroupId(clusterAccount) : null,
                 NodeIds = groupNodeIds,
                 Data = new Dictionary<string, object>
                 {
-                    ["resourceId"] = cluster.Id
+                    ["resourceId"] = cluster.Id,
+                    ["account"] = clusterAccount ?? ""
                 }
             };
         }
@@ -106,15 +111,20 @@ public sealed class ServiceGrouper : IGroupingStrategy
 
             if (groupMembers.Count > 0)
             {
+                // Get the account for this load balancer
+                var lbAccount = lb.Data.TryGetValue("account", out var acc) ? acc?.ToString() : null;
+
                 yield return new NodeGroup
                 {
                     Id = $"group-lb-{lb.Id}",
                     Label = lb.Label,
                     GroupType = "load-balancer",
+                    ParentId = !string.IsNullOrWhiteSpace(lbAccount) ? AccountGrouper.GetAccountGroupId(lbAccount) : null,
                     NodeIds = groupMembers,
                     Data = new Dictionary<string, object>
                     {
-                        ["resourceId"] = lb.Id
+                        ["resourceId"] = lb.Id,
+                        ["account"] = lbAccount ?? ""
                     }
                 };
             }

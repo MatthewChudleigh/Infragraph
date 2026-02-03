@@ -79,8 +79,9 @@ public sealed class GraphBuilder(IEnumerable<IGroupingStrategy> groupingStrategi
                 Height = options.DefaultNodeHeight,
                 Data = new Dictionary<string, object>
                 {
-                    ["arn"] = resource.Arn ?? resource.Id, 
-                    ["region"] = resource.Region ?? "global", 
+                    ["arn"] = resource.Arn ?? resource.Id,
+                    ["region"] = resource.Region ?? "global",
+                    ["account"] = resource.Account ?? "",
                     ["tags"] = resource.Tags
                 }
             }).ToList();
@@ -178,6 +179,34 @@ public sealed class GraphBuilder(IEnumerable<IGroupingStrategy> groupingStrategi
         {
             // Filter out affinity hint groups from final output
             var groups = allGroups.Where(g => g.GroupType != "affinity-hint").ToList();
+
+            // Assign orphan nodes to their account groups
+            var accountGroups = groups.Where(g => g.GroupType == "account").ToDictionary(g => g.Id);
+            foreach (var node in map.Nodes.Where(n => n.ParentId == null))
+            {
+                var account = node.Data.TryGetValue("account", out var acc) ? acc?.ToString() : null;
+                if (string.IsNullOrWhiteSpace(account)) continue;
+
+                var accountGroupId = $"group-account-{account}";
+                if (!accountGroups.TryGetValue(accountGroupId, out var accountGroup)) continue;
+
+                node.ParentId = accountGroupId;
+                if (!accountGroup.NodeIds.Contains(node.Id))
+                {
+                    accountGroup.NodeIds.Add(node.Id);
+                }
+            }
+
+            // Build ChildGroupIds for account groups based on groups with account as parent
+            foreach (var group in groups.Where(g => g.GroupType != "account" && g.ParentId != null))
+            {
+                if (!accountGroups.TryGetValue(group.ParentId!, out var accountGroup)) continue;
+
+                if (!accountGroup.ChildGroupIds.Contains(group.Id))
+                {
+                    accountGroup.ChildGroupIds.Add(group.Id);
+                }
+            }
 
             // Remove nodes that are now represented as groups (VPCs, Subnets)
             // These resources are containers, not individual nodes

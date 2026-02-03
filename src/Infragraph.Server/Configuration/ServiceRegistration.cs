@@ -37,6 +37,7 @@ public static class ServiceRegistration
         services.AddSingleton<IRelationshipExtractor, ComputeRelationship>();
 
         // Grouping strategies
+        services.AddSingleton<IGroupingStrategy, AccountGrouper>();
         services.AddSingleton<IGroupingStrategy, VpcGrouper>();
         services.AddSingleton<IGroupingStrategy, ServiceGrouper>();
         services.AddSingleton<IGroupingStrategy, AffinityGrouper>();

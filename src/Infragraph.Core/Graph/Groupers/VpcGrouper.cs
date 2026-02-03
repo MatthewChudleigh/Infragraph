@@ -136,17 +136,22 @@ public sealed class VpcGrouper : IGroupingStrategy
                 .Select(n => n.Id)
                 .ToList();
 
+            // Get the account for this VPC
+            var vpcAccount = vpc.Data.TryGetValue("account", out var acc) ? acc?.ToString() : null;
+
             // Create VPC group with collected child group IDs
             var vpcGroup = new NodeGroup
             {
                 Id = $"group-{vpc.Id}",
                 Label = vpc.Label,
                 GroupType = "vpc",
+                ParentId = !string.IsNullOrWhiteSpace(vpcAccount) ? AccountGrouper.GetAccountGroupId(vpcAccount) : null,
                 NodeIds = directVpcResources,
                 ChildGroupIds = subnetGroupIds,
                 Data = new Dictionary<string, object>
                 {
-                    ["resourceId"] = vpc.Id
+                    ["resourceId"] = vpc.Id,
+                    ["account"] = vpcAccount ?? ""
                 }
             };
 

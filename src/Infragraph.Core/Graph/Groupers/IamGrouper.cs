@@ -39,15 +39,20 @@ public sealed class IamGrouper : IGroupingStrategy
 
             if (roleIds.Count > 0)
             {
+                // Get the account for this instance profile
+                var profileAccount = profile.Data.TryGetValue("account", out var acc) ? acc?.ToString() : null;
+
                 yield return new NodeGroup
                 {
                     Id = $"group-profile-{profile.Id}",
                     Label = profile.Label,
                     GroupType = "instance-profile",
+                    ParentId = !string.IsNullOrWhiteSpace(profileAccount) ? AccountGrouper.GetAccountGroupId(profileAccount) : null,
                     NodeIds = roleIds,
                     Data = new Dictionary<string, object>
                     {
-                        ["resourceId"] = profile.Id
+                        ["resourceId"] = profile.Id,
+                        ["account"] = profileAccount ?? ""
                     }
                 };
             }
@@ -87,15 +92,20 @@ public sealed class IamGrouper : IGroupingStrategy
 
             if (policyIds.Count > 0)
             {
+                // Get the account for this role
+                var roleAccount = role.Data.TryGetValue("account", out var acc) ? acc?.ToString() : null;
+
                 yield return new NodeGroup
                 {
                     Id = $"group-role-{role.Id}",
                     Label = role.Label,
                     GroupType = "iam-role",
+                    ParentId = !string.IsNullOrWhiteSpace(roleAccount) ? AccountGrouper.GetAccountGroupId(roleAccount) : null,
                     NodeIds = policyIds,
                     Data = new Dictionary<string, object>
                     {
-                        ["resourceId"] = role.Id
+                        ["resourceId"] = role.Id,
+                        ["account"] = roleAccount ?? ""
                     }
                 };
             }
