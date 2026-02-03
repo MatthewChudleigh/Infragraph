@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Infragraph.Core.Parsing;
 
 using System.Runtime.CompilerServices;
@@ -11,8 +13,13 @@ using Common.Models.Former2;
 public sealed class Former2Parser : IResourceParser
 {
     /// <inheritdoc />
-    public async IAsyncEnumerable<Former2Resource> ParseAsync(
-        Stream json,
+    public IAsyncEnumerable<IResourceParser.ParseResult> ParseAsync(Stream json, CancellationToken cancellationToken = default)
+    {
+        return ParseStreamAsync(json, [], cancellationToken);
+    }
+    
+    public static async IAsyncEnumerable<IResourceParser.ParseResult> ParseStreamAsync(
+        Stream json, ICollection<string> filterTypes,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         // Former2 exports are JSON arrays of resources
@@ -28,27 +35,52 @@ public sealed class Former2Parser : IResourceParser
             cancellationToken.ThrowIfCancellationRequested();
 
             var resource = ParseResource(element);
-            if (resource != null)
+            if (resource.Result(out var r, out _) &&
+                filterTypes.Contains(r.Type))
             {
-                yield return resource;
+                continue;
             }
+            
+            yield return resource;
         }
     }
 
-    private static Former2Resource? ParseResource(JsonElement element)
+    private static IResourceParser.ParseResult ParseResource(JsonElement element)
     {
-        if (!element.TryGetProperty("id", out var idElement) ||
-            !element.TryGetProperty("type", out var typeElement))
+        if (!element.TryGetProperty("type", out var typeElement))
         {
-            return null;
+            return IResourceParser.ParseResult.Fail(element);
+        }
+        
+        JsonElement? data = null;
+        if (element.TryGetProperty("data", out var dataElement))
+        {
+            data = dataElement.Clone();
+        }
+        
+        var type = typeElement.GetString();
+        if (string.IsNullOrEmpty(type))
+        {
+            return IResourceParser.ParseResult.Fail(element);
         }
 
-        var id = idElement.GetString();
-        var type = typeElement.GetString();
+        var id = "";
+        if (type == "iam.virtualmfadevice" && data != null)
+        {
+            id = data.Value.GetString("SerialNumber");
+        }
+        else if (element.TryGetProperty("id", out var idElement))
+        {
+            id = idElement.GetString();
+        }
+        else
+        {
+            return IResourceParser.ParseResult.Fail(element);
+        }
 
         if (string.IsNullOrEmpty(id) || string.IsNullOrEmpty(type))
         {
-            return null;
+            return IResourceParser.ParseResult.Fail(element);
         }
 
         string? region = null;
@@ -57,18 +89,21 @@ public sealed class Former2Parser : IResourceParser
             region = regionElement.GetString();
         }
 
-        JsonElement data = default;
-        if (element.TryGetProperty("data", out var dataElement))
+        string? account = null;
+        if (element.TryGetProperty("account", out var accountElement))
         {
-            data = dataElement.Clone();
+            account = accountElement.GetString();
         }
-
-        return new Former2Resource
+        
+        var resource = new Former2Resource
         {
             Id = id,
+            Account = account ?? "",
             Type = type,
             Region = region,
-            Data = data
+            Data = data ?? default(JsonElement)
         };
+        
+        return IResourceParser.ParseResult.Ok(resource);
     }
 }

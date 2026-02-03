@@ -8,28 +8,22 @@ using Infragraph.Common.Models.Graph;
 /// <summary>
 /// Builds the infrastructure graph from resources and relationships.
 /// </summary>
-public sealed class GraphBuilder : IGraphBuilder
+public sealed class GraphBuilder(IEnumerable<IGroupingStrategy> groupingStrategies) : IGraphBuilder
 {
     public InfraGraph BuildGraph(
-        IEnumerable<AwsResource> resources,
-        IEnumerable<ResourceRelationship> relationships,
-        IEnumerable<IGroupingStrategy> groupingStrategies,
+        ResourceSet resourceSet,
         DiagramOptions options)
     {
-        return BuildGraph(groupingStrategies, resources, relationships, options);
+        return BuildGraph(groupingStrategies, resourceSet, options);
     }
     
     private static InfraGraph BuildGraph(
         IEnumerable<IGroupingStrategy> groupingStrategies,
-        IEnumerable<AwsResource> resources,
-        IEnumerable<ResourceRelationship> relationships,
+        ResourceSet resourceSet,
         DiagramOptions options)
     {
-        var resourceList = resources.ToList();
-        var relationshipList = relationships.ToList();
-
         // Build nodes (handle potential duplicates)
-        var nodes = BuildNodes(resourceList, options);
+        var nodes = BuildNodes(resourceSet.Resources, options);
         var nodeIndex = new Dictionary<string, GraphNode>();
         foreach (var node in nodes)
         {
@@ -37,7 +31,7 @@ public sealed class GraphBuilder : IGraphBuilder
         }
 
         // Build edges (only for nodes that exist in the graph)
-        var edges = BuildEdges(relationshipList, nodeIndex, options);
+        var edges = BuildEdges(resourceSet.Relationships, nodeIndex, options);
 
         // Filter isolated nodes if configured
         if (!options.ShowIsolatedNodes)
@@ -58,7 +52,7 @@ public sealed class GraphBuilder : IGraphBuilder
             ApplyGrouping(groupingStrategies, map, options);
 
         // Build metadata
-        var metadata = BuildMetadata(resourceList, relationshipList, finalNodes, options);
+        var metadata = BuildMetadata(resourceSet, finalNodes, options);
 
         return new InfraGraph
         {
@@ -205,18 +199,23 @@ public sealed class GraphBuilder : IGraphBuilder
     }
 
     private static GraphMetadata BuildMetadata(
-        List<AwsResource> allResources,
-        List<ResourceRelationship> allRelationships,
+        ResourceSet resourceSet,
         List<GraphNode> includedNodes,
         DiagramOptions options) // TODO: options?
     {
         return new GraphMetadata
         {
-            TotalResources = allResources.Count,
+            TotalResources = resourceSet.Resources.Count,
             IncludedResources = includedNodes.Count,
-            TotalRelationships = allRelationships.Count,
-            ResourceTypes = allResources.Select(r => r.Type).Distinct().OrderBy(t => t).ToList(),
-            Regions = allResources
+            TotalRelationships = resourceSet.Relationships.Count,
+            ResourceTypes = resourceSet.Resources.Select(r => r.Type).Distinct().OrderBy(t => t).ToList(),
+            Accounts = resourceSet.Resources
+                .Where(r => !string.IsNullOrWhiteSpace(r.Account))
+                .Select(r => r.Account)
+                .Distinct()
+                .OrderBy(a => a)
+                .ToList(),
+            Regions = resourceSet.Resources
                 .Where(r => !string.IsNullOrEmpty(r.Region))
                 .Select(r => r.Region!)
                 .Distinct()

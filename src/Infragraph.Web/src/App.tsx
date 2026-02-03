@@ -47,6 +47,28 @@ function App() {
     // Export functionality will be implemented in Phase 6
     console.log('Export not yet implemented');
   }, []);
+  
+  const GroupingItem = ({ groupName, groupKey } : { groupName : string, groupKey : string }) => {
+    return (
+        <div className="option-group">
+          <label className="option-label">
+            <input
+                type="checkbox"
+                checked={options.grouping?.includes(groupKey)}
+                onChange={(e) => {
+                  setOptions((prev) => ({
+                    ...prev,
+                    grouping: e.target.checked
+                        ? [...(prev.grouping ?? []), groupKey]
+                        : prev.grouping?.filter((g) => g !== groupKey),
+                  }));
+                }}
+            />
+            <span>Group by {groupName}</span>
+          </label>
+        </div>
+    )
+  };
 
   return (
     <div className="app-container">
@@ -107,41 +129,9 @@ function App() {
             <div className="options-panel">
               <h3 className="options-title">Options</h3>
 
-              <div className="option-group">
-                <label className="option-label">
-                  <input
-                    type="checkbox"
-                    checked={options.grouping?.includes('vpc')}
-                    onChange={(e) => {
-                      setOptions((prev) => ({
-                        ...prev,
-                        grouping: e.target.checked
-                          ? [...(prev.grouping ?? []), 'vpc']
-                          : prev.grouping?.filter((g) => g !== 'vpc'),
-                      }));
-                    }}
-                  />
-                  <span>Group by VPC</span>
-                </label>
-              </div>
-
-              <div className="option-group">
-                <label className="option-label">
-                  <input
-                    type="checkbox"
-                    checked={options.grouping?.includes('service')}
-                    onChange={(e) => {
-                      setOptions((prev) => ({
-                        ...prev,
-                        grouping: e.target.checked
-                          ? [...(prev.grouping ?? []), 'service']
-                          : prev.grouping?.filter((g) => g !== 'service'),
-                      }));
-                    }}
-                  />
-                  <span>Group by Service</span>
-                </label>
-              </div>
+              <GroupingItem groupName={'VPC'} groupKey={'vpc'} />
+              <GroupingItem groupName={'Service'} groupKey={'service'} />
+              <GroupingItem groupName={'IAM'} groupKey={'iam'} />
 
               <div className="option-group">
                 <label className="option-label">

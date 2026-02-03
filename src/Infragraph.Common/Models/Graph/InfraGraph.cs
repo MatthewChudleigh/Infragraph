@@ -57,6 +57,11 @@ public sealed class GraphMetadata
     public List<string> Regions { get; init; } = [];
 
     /// <summary>
+    /// AWS accounts represented in the graph.
+    /// </summary>
+    public List<string> Accounts { get; init; } = [];
+
+    /// <summary>
     /// Generation timestamp.
     /// </summary>
     public DateTimeOffset GeneratedAt { get; init; } = DateTimeOffset.UtcNow;

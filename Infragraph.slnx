@@ -6,5 +6,6 @@
     <Project Path="src/Infragraph.Rendering/Infragraph.Rendering.csproj" />
     <Project Path="src/Infragraph.Server/Infragraph.Server.csproj" />
     <Project Path="src/Infragraph.Web/Infragraph.Web.esproj" />
+    <Project Path="src\Infragraph.Cli\Infragraph.Cli.csproj" Type="Classic C#" />
   </Folder>
 </Solution>

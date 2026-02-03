@@ -1,3 +1,6 @@
+using System.Diagnostics.CodeAnalysis;
+using System.Text.Json;
+
 namespace Infragraph.Common.Abstractions;
 
 using Models.Former2;
@@ -13,5 +16,38 @@ public interface IResourceParser
     /// <param name="json">The input stream containing Former2 JSON.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>An async enumerable of parsed Former2 resources.</returns>
-    IAsyncEnumerable<Former2Resource> ParseAsync(Stream json, CancellationToken cancellationToken = default);
+    IAsyncEnumerable<ParseResult> ParseAsync(Stream json, CancellationToken cancellationToken = default);
+    
+    public record ParseResult(
+        bool Success,
+        Former2Resource? Resource,
+        JsonElement? Invalid)
+    {
+        public static ParseResult Ok(Former2Resource resource)
+        {
+            return new ParseResult(true, resource, null);
+        }
+
+        public static ParseResult Fail(JsonElement invalid)
+        {
+            return new  ParseResult(false, null, invalid);
+        }
+        
+        public bool Result([NotNullWhen(true)] out Former2Resource? resource,
+            [NotNullWhen(false)] out JsonElement? invalid)
+        {
+            if (Success)
+            {
+                invalid = null;
+                resource = Resource!;
+                return true;
+            }
+            else
+            {
+                resource = null;
+                invalid = Invalid!;
+                return false;
+            }
+        }
+    }
 }

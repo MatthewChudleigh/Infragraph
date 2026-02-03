@@ -7,6 +7,8 @@ using System.Text.Json;
 /// </summary>
 public abstract class AwsResource
 {
+    public string Account { get; set; } = "";
+    
     /// <summary>
     /// The resource identifier (typically the ARN or unique ID).
     /// </summary>

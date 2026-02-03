@@ -19,9 +19,9 @@ internal interface IResourceTypeHandler
 /// <summary>
 /// Factory for creating typed AWS resource models.
 /// </summary>
-public sealed class ResourceModelFactory : IResourceModelFactory
+public sealed class ResourceModelFactory(IEnumerable<IRelationshipExtractor> extractors) : IResourceModelFactory
 {
-    private readonly Dictionary<string, IResourceTypeHandler> _handlers = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly Dictionary<string, IResourceTypeHandler> Handlers = new(StringComparer.OrdinalIgnoreCase)
     {
         // VPC/Networking
         ["ec2.vpc"] = new VpcHandler(),
@@ -70,17 +70,136 @@ public sealed class ResourceModelFactory : IResourceModelFactory
     // Other
 
     /// <inheritdoc />
-    public bool CanHandle(string resourceType) => _handlers.ContainsKey(resourceType);
+    public bool CanHandle(string resourceType) => Handlers.ContainsKey(resourceType);
 
-    /// <inheritdoc />
+    public ResourceSet CreateResourceSet(ICollection<Former2Resource> former2Resources)
+    {
+        var awsResources = former2Resources.Select(CreateModel).ToList();
+        var resourceIndex = BuildResourceIndex(awsResources);
+        var relationships = BuildRelationships(extractors, awsResources, resourceIndex);
+        return new ResourceSet()
+        {
+            Resources = awsResources,
+            ResourceIndex = resourceIndex,
+            Relationships = relationships,
+        };
+    }
+    
     public AwsResource CreateModel(Former2Resource resource)
     {
-        return _handlers.TryGetValue(resource.Type, out var handler)
+        var awsResource = Handlers.TryGetValue(resource.Type, out var handler)
             ? handler.CreateResource(resource)
             // Fall back to generic resource
             : CreateGenericResource(resource);
+        
+        awsResource.Account = resource.Account;
+        
+        return awsResource;
     }
 
+    private static List<ResourceRelationship> BuildRelationships(
+        IEnumerable<IRelationshipExtractor> extractors,
+        ICollection<AwsResource> resources,
+        IReadOnlyDictionary<string, AwsResource> resourceIndex)
+    {
+        var relationships = new List<ResourceRelationship>();
+        
+        foreach (var extractor in extractors)
+        {
+            foreach (var resource in resources)
+            {
+                if (extractor.SupportedResourceTypes.Contains(resource.Type))
+                {
+                    relationships.AddRange(extractor.ExtractRelationships(resourceIndex, resource));
+                }
+            }
+        }
+
+        return relationships;
+    }
+    
+    /// <summary>
+    /// Adds alternative IDs to the resource index for easier lookup.
+    /// </summary>
+    private static Dictionary<string, AwsResource> BuildResourceIndex(List<AwsResource> resources)
+    {
+        var index = new Dictionary<string, AwsResource>();
+        
+        foreach (var resource in resources)
+        {
+            index.TryAdd(resource.Id, resource);
+            
+            // Also index by common ID formats (VpcId, SubnetId, etc.)
+            
+            // Add by ARN if different from ID
+            if (!string.IsNullOrEmpty(resource.Arn) && resource.Arn != resource.Id)
+            {
+                index.TryAdd(resource.Arn, resource);
+            }
+
+            // Add by resource-specific IDs
+            switch (resource)
+            {
+                case VpcResource vpc when !string.IsNullOrEmpty(vpc.VpcId):
+                    index.TryAdd(vpc.VpcId, resource);
+                    break;
+                case SubnetResource subnet when !string.IsNullOrEmpty(subnet.SubnetId):
+                    index.TryAdd(subnet.SubnetId, resource);
+                    break;
+                case SecurityGroupResource sg when !string.IsNullOrEmpty(sg.GroupId):
+                    index.TryAdd(sg.GroupId, resource);
+                    break;
+                case RouteTableResource rt when !string.IsNullOrEmpty(rt.RouteTableId):
+                    index.TryAdd(rt.RouteTableId, resource);
+                    break;
+                case InternetGatewayResource igw when !string.IsNullOrEmpty(igw.InternetGatewayId):
+                    index.TryAdd(igw.InternetGatewayId, resource);
+                    break;
+                case NatGatewayResource nat when !string.IsNullOrEmpty(nat.NatGatewayId):
+                    index.TryAdd(nat.NatGatewayId, resource);
+                    break;
+                case TransitGatewayResource tgw when !string.IsNullOrEmpty(tgw.TransitGatewayId):
+                    index.TryAdd(tgw.TransitGatewayId, resource);
+                    break;
+                case Ec2InstanceResource ec2 when !string.IsNullOrEmpty(ec2.InstanceId):
+                    index.TryAdd(ec2.InstanceId, resource);
+                    break;
+                case EcsClusterResource cluster when !string.IsNullOrEmpty(cluster.ClusterArn):
+                    index.TryAdd(cluster.ClusterArn, resource);
+                    break;
+                case EcsServiceResource svc when !string.IsNullOrEmpty(svc.ServiceArn):
+                    index.TryAdd(svc.ServiceArn, resource);
+                    break;
+                case EcsTaskDefinitionResource td when !string.IsNullOrEmpty(td.TaskDefinitionArn):
+                    index.TryAdd(td.TaskDefinitionArn, resource);
+                    break;
+                case LoadBalancerResource lb when !string.IsNullOrEmpty(lb.LoadBalancerArn):
+                    index.TryAdd(lb.LoadBalancerArn, resource);
+                    break;
+                case TargetGroupResource tg when !string.IsNullOrEmpty(tg.TargetGroupArn):
+                    index.TryAdd(tg.TargetGroupArn, resource);
+                    break;
+                case ListenerResource listener when !string.IsNullOrEmpty(listener.ListenerArn):
+                    index.TryAdd(listener.ListenerArn, resource);
+                    break;
+                case IamRoleResource role when !string.IsNullOrEmpty(role.RoleArn):
+                    index.TryAdd(role.RoleArn, resource);
+                    break;
+                case InstanceProfileResource profile when !string.IsNullOrEmpty(profile.InstanceProfileArn):
+                    index.TryAdd(profile.InstanceProfileArn, resource);
+                    break;
+                case IamPolicyResource policy when !string.IsNullOrEmpty(policy.PolicyArn):
+                    index.TryAdd(policy.PolicyArn, resource);
+                    break;
+                case LambdaFunctionResource lambda when !string.IsNullOrEmpty(lambda.FunctionArn):
+                    index.TryAdd(lambda.FunctionArn, resource);
+                    break;
+            }
+        }
+
+        return index;
+    }
+    
     private static GenericAwsResource CreateGenericResource(Former2Resource resource)
     {
         var tags = ExtractTags(resource.Data);

@@ -20,15 +20,15 @@ internal sealed class Ec2InstanceHandler : IResourceTypeHandler
             Name = tags.GetValueOrDefault("Name"),
             Tags = tags,
             RawData = data,
-            InstanceId = GetString(data, "InstanceId"),
-            InstanceType = GetString(data, "InstanceType"),
-            SubnetId = GetString(data, "SubnetId"),
-            VpcId = GetString(data, "VpcId"),
-            State = GetNestedString(data, "State", "Name"),
-            PrivateIpAddress = GetString(data, "PrivateIpAddress"),
-            PublicIpAddress = GetString(data, "PublicIpAddress"),
+            InstanceId = data.GetString("InstanceId"),
+            InstanceType = data.GetString("InstanceType"),
+            SubnetId = data.GetString("SubnetId"),
+            VpcId = data.GetString("VpcId"),
+            State = data.GetNestedString("State", "Name"),
+            PrivateIpAddress = data.GetString("PrivateIpAddress"),
+            PublicIpAddress = data.GetString("PublicIpAddress"),
             SecurityGroupIds = sgIds,
-            IamInstanceProfileArn = GetNestedString(data, "IamInstanceProfile", "Arn")
+            IamInstanceProfileArn = data.GetNestedString("IamInstanceProfile", "Arn")
         };
     }
 
@@ -46,13 +46,6 @@ internal sealed class Ec2InstanceHandler : IResourceTypeHandler
 
         return sgIds;
     }
-
-    private static string? GetString(JsonElement data, string prop) =>
-        data.TryGetProperty(prop, out var val) && val.ValueKind == JsonValueKind.String ? val.GetString() : null;
-
-    private static string? GetNestedString(JsonElement data, string prop, string nested) =>
-        data.TryGetProperty(prop, out var obj) && obj.TryGetProperty(nested, out var val) && val.ValueKind == JsonValueKind.String
-            ? val.GetString() : null;
 }
 
 internal sealed class EbsVolumeHandler : IResourceTypeHandler
@@ -71,12 +64,12 @@ internal sealed class EbsVolumeHandler : IResourceTypeHandler
             Name = tags.GetValueOrDefault("Name"),
             Tags = tags,
             RawData = data,
-            VolumeId = GetString(data, "VolumeId"),
-            AvailabilityZone = GetString(data, "AvailabilityZone"),
-            VolumeType = GetString(data, "VolumeType"),
-            Size = GetIntNullable(data, "Size"),
-            State = GetString(data, "State"),
-            Encrypted = GetBool(data, "Encrypted"),
+            VolumeId = data.GetString("VolumeId"),
+            AvailabilityZone = data.GetString("AvailabilityZone"),
+            VolumeType = data.GetString("VolumeType"),
+            Size = data.GetIntNullable("Size"),
+            State = data.GetString("State"),
+            Encrypted = data.GetBool("Encrypted"),
             Attachments = attachments
         };
     }
@@ -91,23 +84,14 @@ internal sealed class EbsVolumeHandler : IResourceTypeHandler
         {
             attachments.Add(new VolumeAttachment
             {
-                InstanceId = GetString(att, "InstanceId"),
-                Device = GetString(att, "Device"),
-                State = GetString(att, "State")
+                InstanceId = att.GetString("InstanceId"),
+                Device = att.GetString("Device"),
+                State = att.GetString("State")
             });
         }
 
         return attachments;
     }
-
-    private static string? GetString(JsonElement data, string prop) =>
-        data.TryGetProperty(prop, out var val) && val.ValueKind == JsonValueKind.String ? val.GetString() : null;
-
-    private static int? GetIntNullable(JsonElement data, string prop) =>
-        data.TryGetProperty(prop, out var val) && val.ValueKind == JsonValueKind.Number ? val.GetInt32() : null;
-
-    private static bool GetBool(JsonElement data, string prop) =>
-        data.TryGetProperty(prop, out var val) && val.ValueKind == JsonValueKind.True;
 }
 
 internal sealed class EcsClusterHandler : IResourceTypeHandler
@@ -120,25 +104,19 @@ internal sealed class EcsClusterHandler : IResourceTypeHandler
         return new EcsClusterResource
         {
             Id = resource.Id,
-            Arn = GetString(data, "clusterArn") ?? resource.Id,
+            Arn = data.GetString("clusterArn") ?? resource.Id,
             Type = resource.Type,
             Region = resource.Region,
-            Name = tags.GetValueOrDefault("Name") ?? GetString(data, "clusterName"),
+            Name = tags.GetValueOrDefault("Name") ?? data.GetString("clusterName"),
             Tags = tags,
             RawData = data,
-            ClusterArn = GetString(data, "clusterArn"),
-            ClusterName = GetString(data, "clusterName"),
-            Status = GetString(data, "status"),
-            RunningTasksCount = GetInt(data, "runningTasksCount"),
-            ActiveServicesCount = GetInt(data, "activeServicesCount")
+            ClusterArn = data.GetString("clusterArn"),
+            ClusterName = data.GetString("clusterName"),
+            Status = data.GetString("status"),
+            RunningTasksCount = data.GetInt("runningTasksCount"),
+            ActiveServicesCount = data.GetInt("activeServicesCount")
         };
     }
-
-    private static string? GetString(JsonElement data, string prop) =>
-        data.TryGetProperty(prop, out var val) && val.ValueKind == JsonValueKind.String ? val.GetString() : null;
-
-    private static int GetInt(JsonElement data, string prop) =>
-        data.TryGetProperty(prop, out var val) && val.ValueKind == JsonValueKind.Number ? val.GetInt32() : 0;
 }
 
 internal sealed class EcsServiceHandler : IResourceTypeHandler
@@ -153,24 +131,24 @@ internal sealed class EcsServiceHandler : IResourceTypeHandler
         return new EcsServiceResource
         {
             Id = resource.Id,
-            Arn = GetString(data, "serviceArn") ?? resource.Id,
+            Arn = data.GetString("serviceArn") ?? resource.Id,
             Type = resource.Type,
             Region = resource.Region,
-            Name = tags.GetValueOrDefault("Name") ?? GetString(data, "serviceName"),
+            Name = tags.GetValueOrDefault("Name") ?? data.GetString("serviceName"),
             Tags = tags,
             RawData = data,
-            ServiceArn = GetString(data, "serviceArn"),
-            EcsServiceName = GetString(data, "serviceName"),
-            ClusterArn = GetString(data, "clusterArn") ?? "",
-            TaskDefinitionArn = GetString(data, "taskDefinition"),
-            Status = GetString(data, "status"),
-            DesiredCount = GetInt(data, "desiredCount"),
-            RunningCount = GetInt(data, "runningCount"),
-            LaunchType = GetString(data, "launchType"),
+            ServiceArn = data.GetString("serviceArn"),
+            EcsServiceName = data.GetString("serviceName"),
+            ClusterArn = data.GetString("clusterArn") ?? "",
+            TaskDefinitionArn = data.GetString("taskDefinition"),
+            Status = data.GetString("status"),
+            DesiredCount = data.GetInt("desiredCount"),
+            RunningCount = data.GetInt("runningCount"),
+            LaunchType = data.GetString("launchType"),
             SubnetIds = subnets,
             SecurityGroupIds = securityGroups,
             LoadBalancers = loadBalancers,
-            RoleArn = GetString(data, "roleArn")
+            RoleArn = data.GetString("roleArn")
         };
     }
 
@@ -184,9 +162,9 @@ internal sealed class EcsServiceHandler : IResourceTypeHandler
         {
             loadBalancers.Add(new LoadBalancerAttachment
             {
-                TargetGroupArn = GetString(lb, "targetGroupArn"),
-                ContainerName = GetString(lb, "containerName"),
-                ContainerPort = GetIntNullable(lb, "containerPort")
+                TargetGroupArn = lb.GetString( "targetGroupArn"),
+                ContainerName = lb.GetString("containerName"),
+                ContainerPort = lb.GetIntNullable("containerPort")
             });
         }
 
@@ -214,15 +192,6 @@ internal sealed class EcsServiceHandler : IResourceTypeHandler
 
         return (subnets, securityGroups);
     }
-
-    private static string? GetString(JsonElement data, string prop) =>
-        data.TryGetProperty(prop, out var val) && val.ValueKind == JsonValueKind.String ? val.GetString() : null;
-
-    private static int GetInt(JsonElement data, string prop) =>
-        data.TryGetProperty(prop, out var val) && val.ValueKind == JsonValueKind.Number ? val.GetInt32() : 0;
-
-    private static int? GetIntNullable(JsonElement data, string prop) =>
-        data.TryGetProperty(prop, out var val) && val.ValueKind == JsonValueKind.Number ? val.GetInt32() : null;
 }
 
 internal sealed class EcsTaskDefinitionHandler : IResourceTypeHandler
@@ -241,10 +210,10 @@ internal sealed class EcsTaskDefinitionHandler : IResourceTypeHandler
 
                 containers.Add(new ContainerDefinition
                 {
-                    Name = GetString(c, "name"),
-                    Image = GetString(c, "image"),
-                    Cpu = GetIntNullable(c, "cpu"),
-                    Memory = GetIntNullable(c, "memory"),
+                    Name = c.GetString("name"),
+                    Image = c.GetString("image"),
+                    Cpu = c.GetIntNullable("cpu"),
+                    Memory = c.GetIntNullable( "memory"),
                     PortMappings = portMappings
                 });
             }
@@ -253,20 +222,20 @@ internal sealed class EcsTaskDefinitionHandler : IResourceTypeHandler
         return new EcsTaskDefinitionResource
         {
             Id = resource.Id,
-            Arn = GetString(data, "taskDefinitionArn") ?? resource.Id,
+            Arn = data.GetString("taskDefinitionArn") ?? resource.Id,
             Type = resource.Type,
             Region = resource.Region,
-            Name = tags.GetValueOrDefault("Name") ?? GetString(data, "family"),
+            Name = tags.GetValueOrDefault("Name") ?? data.GetString("family"),
             Tags = tags,
             RawData = data,
-            TaskDefinitionArn = GetString(data, "taskDefinitionArn"),
-            Family = GetString(data, "family"),
-            Revision = GetInt(data, "revision"),
-            TaskRoleArn = GetString(data, "taskRoleArn"),
-            ExecutionRoleArn = GetString(data, "executionRoleArn"),
-            NetworkMode = GetString(data, "networkMode"),
-            Cpu = GetIntNullable(data, "cpu") ?? ParseCpuMemory(GetString(data, "cpu")),
-            Memory = GetIntNullable(data, "memory") ?? ParseCpuMemory(GetString(data, "memory")),
+            TaskDefinitionArn = data.GetString("taskDefinitionArn"),
+            Family = data.GetString("family"),
+            Revision = data.GetInt("revision"),
+            TaskRoleArn = data.GetString("taskRoleArn"),
+            ExecutionRoleArn = data.GetString("executionRoleArn"),
+            NetworkMode = data.GetString("networkMode"),
+            Cpu = data.GetIntNullable( "cpu") ?? ParseCpuMemory(data.GetString("cpu")),
+            Memory = data.GetIntNullable( "memory") ?? ParseCpuMemory(data.GetString("memory")),
             Containers = containers
         };
     }
@@ -281,9 +250,9 @@ internal sealed class EcsTaskDefinitionHandler : IResourceTypeHandler
         {
             portMappings.Add(new PortMapping
             {
-                ContainerPort = GetIntNullable(pm, "containerPort"),
-                HostPort = GetIntNullable(pm, "hostPort"),
-                Protocol = GetString(pm, "protocol")
+                ContainerPort = pm.GetIntNullable("containerPort"),
+                HostPort = pm.GetIntNullable("hostPort"),
+                Protocol = pm.GetString("protocol")
             });
         }
 
@@ -295,15 +264,6 @@ internal sealed class EcsTaskDefinitionHandler : IResourceTypeHandler
         if (string.IsNullOrEmpty(val)) return null;
         return int.TryParse(val, out var result) ? result : null;
     }
-
-    private static string? GetString(JsonElement data, string prop) =>
-        data.TryGetProperty(prop, out var val) && val.ValueKind == JsonValueKind.String ? val.GetString() : null;
-
-    private static int GetInt(JsonElement data, string prop) =>
-        data.TryGetProperty(prop, out var val) && val.ValueKind == JsonValueKind.Number ? val.GetInt32() : 0;
-
-    private static int? GetIntNullable(JsonElement data, string prop) =>
-        data.TryGetProperty(prop, out var val) && val.ValueKind == JsonValueKind.Number ? val.GetInt32() : null;
 }
 
 internal sealed class LambdaFunctionHandler : IResourceTypeHandler
@@ -318,19 +278,19 @@ internal sealed class LambdaFunctionHandler : IResourceTypeHandler
         return new LambdaFunctionResource
         {
             Id = resource.Id,
-            Arn = GetString(data, "FunctionArn") ?? resource.Id,
+            Arn = data.GetString("FunctionArn") ?? resource.Id,
             Type = resource.Type,
             Region = resource.Region,
-            Name = tags.GetValueOrDefault("Name") ?? GetString(data, "FunctionName"),
+            Name = tags.GetValueOrDefault("Name") ?? data.GetString("FunctionName"),
             Tags = tags,
             RawData = data,
-            FunctionArn = GetString(data, "FunctionArn"),
-            FunctionName = GetString(data, "FunctionName"),
-            Runtime = GetString(data, "Runtime"),
-            Handler = GetString(data, "Handler"),
-            RoleArn = GetString(data, "Role"),
-            Timeout = GetIntNullable(data, "Timeout"),
-            MemorySize = GetIntNullable(data, "MemorySize"),
+            FunctionArn = data.GetString("FunctionArn"),
+            FunctionName = data.GetString("FunctionName"),
+            Runtime = data.GetString("Runtime"),
+            Handler = data.GetString("Handler"),
+            RoleArn = data.GetString("Role"),
+            Timeout = data.GetIntNullable( "Timeout"),
+            MemorySize = data.GetIntNullable( "MemorySize"),
             VpcId = vpcId,
             SubnetIds = subnets,
             SecurityGroupIds = securityGroups
@@ -345,7 +305,7 @@ internal sealed class LambdaFunctionHandler : IResourceTypeHandler
 
         if (!data.TryGetProperty("VpcConfig", out var vpc)) return (subnets, securityGroups, vpcId);
         
-        vpcId = GetString(vpc, "VpcId");
+        vpcId = vpc.GetString("VpcId");
         if (vpc.TryGetProperty("SubnetIds", out var subs) && subs.ValueKind == JsonValueKind.Array)
         {
             subnets.AddRange(subs.EnumerateArray().Select(s => s.GetString() ?? ""));
@@ -358,10 +318,4 @@ internal sealed class LambdaFunctionHandler : IResourceTypeHandler
 
         return (subnets, securityGroups, vpcId);
     }
-
-    private static string? GetString(JsonElement data, string prop) =>
-        data.TryGetProperty(prop, out var val) && val.ValueKind == JsonValueKind.String ? val.GetString() : null;
-
-    private static int? GetIntNullable(JsonElement data, string prop) =>
-        data.TryGetProperty(prop, out var val) && val.ValueKind == JsonValueKind.Number ? val.GetInt32() : null;
 }
