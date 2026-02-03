@@ -8,7 +8,7 @@ namespace Infragraph.Core.Relationships;
 /// </summary>
 public sealed class SecurityRelationship : IRelationshipExtractor
 {
-    public IEnumerable<string> SupportedResourceTypes => ["ec2.securitygroup"];
+    public IEnumerable<string> SupportedResourceTypes => AllRelationships.SecurityResourceTypes;
 
     public IEnumerable<ResourceRelationship> ExtractRelationships(
         IReadOnlyDictionary<string, AwsResource> index,

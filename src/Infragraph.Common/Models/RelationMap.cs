@@ -9,6 +9,7 @@ public class RelationMap(ICollection<GraphNode> nodes, ICollection<GraphEdge> ed
     public ICollection<GraphEdge> Edges => edges;
     
     public readonly Dictionary<string, string> ContainedBy = new();
+    public readonly Dictionary<string, string> BelongsTo = new();
     public readonly Dictionary<string, List<string>> Contains = new();
     public readonly Dictionary<string, List<string>> Uses = new();
     public readonly Dictionary<string, List<string>> UsedBy = new();
@@ -22,39 +23,36 @@ public class RelationMap(ICollection<GraphNode> nodes, ICollection<GraphEdge> ed
         // Build containment map (parent -> children)
         foreach (var edge in edges.Where(e => e.RelationshipType == RelationshipType.Contains))
         {
-            if (!map.Contains.ContainsKey(edge.Source))
-                map.Contains[edge.Source] = [];
-            map.Contains[edge.Source].Add(edge.Target);
-            map.ContainedBy[edge.Target] = edge.Source;
+            switch (edge.RelationshipType)
+            {
+                case RelationshipType.Contains:
+                    Add(map.Contains, edge.Source, edge.Target);
+                    map.ContainedBy[edge.Target] = edge.Source; 
+                    break;
+                case RelationshipType.BelongsTo:
+                    map.BelongsTo[edge.Source] = edge.Target;
+                    break;
+                case RelationshipType.Uses:
+                    Add(map.Uses, edge.Source, edge.Target);
+                    // Build reverse lookup: target -> list of sources that use it
+                    Add(map.UsedBy, edge.Target, edge.Source);
+                    break;
+                case RelationshipType.AttachedTo:
+                    Add(map.AttachedTo, edge.Source, edge.Target);
+                    break;
+                case RelationshipType.Assumes:
+                    Add(map.AssumedBy, edge.Target, edge.Source);
+                    break;
+            }
         }
         
-        foreach (var edge in edges.Where(e => e.RelationshipType == RelationshipType.Uses))
-        {
-            if (!map.Uses.ContainsKey(edge.Source))
-                map.Uses[edge.Source] = [];
-            map.Uses[edge.Source].Add(edge.Target); 
-            
-            // Build reverse lookup: target -> list of sources that use it
-            if (!map.UsedBy.ContainsKey(edge.Target))
-                map.UsedBy[edge.Target] = [];
-            map.UsedBy[edge.Target].Add(edge.Source);
-        }
-
-        // Build forward lookup for AttachedTo: source -> list of targets
-        foreach (var edge in edges.Where(e => e.RelationshipType == RelationshipType.AttachedTo))
-        {
-            if (!map.AttachedTo.ContainsKey(edge.Source))
-                map.AttachedTo[edge.Source] = [];
-            map.AttachedTo[edge.Source].Add(edge.Target);
-        }
-        
-        // Build assumes map to find role consumers (who assumes the role)
-        foreach (var edge in edges.Where(e => e.RelationshipType == RelationshipType.Assumes))
-        {
-            if (!map.AssumedBy.ContainsKey(edge.Target))
-                map.AssumedBy[edge.Target] = [];
-            map.AssumedBy[edge.Target].Add(edge.Source);
-        }
         return map;
+
+        void Add(Dictionary<string, List<string>> dict, string key, string value)
+        {
+            if (!dict.ContainsKey(key))
+                dict[key] = [];
+            dict[key].Add(value);
+        }
     }
 }

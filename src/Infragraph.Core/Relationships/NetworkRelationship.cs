@@ -8,10 +8,7 @@ namespace Infragraph.Core.Relationships;
 /// </summary>
 public sealed class NetworkRelationship : IRelationshipExtractor
 {
-    public IEnumerable<string> SupportedResourceTypes => [
-        "ec2.vpc", 
-        "ec2.subnet"
-    ];
+    public IEnumerable<string> SupportedResourceTypes => AllRelationships.NetworkingResourceTypes;
 
     public IEnumerable<ResourceRelationship> ExtractRelationships(
         IReadOnlyDictionary<string, AwsResource> index,

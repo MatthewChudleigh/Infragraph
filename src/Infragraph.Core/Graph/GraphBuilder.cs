@@ -1,3 +1,5 @@
+using Infragraph.Core.Graph.Groupers;
+
 namespace Infragraph.Core.Graph;
 
 using Common.Abstractions;
@@ -14,16 +16,43 @@ public sealed class GraphBuilder(IEnumerable<IGroupingStrategy> groupingStrategi
         ResourceSet resourceSet,
         DiagramOptions options)
     {
-        return BuildGraph(groupingStrategies, resourceSet, options);
+        var groupingUsed = groupingStrategies
+            .Where(g => options.GroupingStrategies.Contains(g.GroupingType));
+
+        var resources =
+            from resource in resourceSet.Resources
+            where options.IncludeTypes.Count <= 0 || options.IncludeTypes.Contains(resource.Type)
+            where !options.ExcludeTypes.Contains(resource.Type)
+            where options.IncludeRegions.Count <= 0 || string.IsNullOrEmpty(resource.Region) ||
+                  options.IncludeRegions.Contains(resource.Region)
+            select resource;
+
+        resourceSet = new ResourceSet()
+        {
+            Resources = resources.ToList(),
+            Relationships = resourceSet.Relationships,
+            ResourceIndex = resourceSet.ResourceIndex
+        };
+        
+        return BuildGraph(groupingUsed, resourceSet, options.ShowIsolatedNodes);
     }
+
+    public static IEnumerable<IGroupingStrategy> DefaultGroupingStrategies =>
+    [
+        new AccountGrouper(),
+        new VpcGrouper(),
+        new ServiceGrouper(),
+        new AffinityGrouper(),
+        new IamGrouper(),
+    ];
     
-    private static InfraGraph BuildGraph(
+    public static InfraGraph BuildGraph(
         IEnumerable<IGroupingStrategy> groupingStrategies,
         ResourceSet resourceSet,
-        DiagramOptions options)
+        bool showIsolatedNodes)
     {
         // Build nodes (handle potential duplicates)
-        var nodes = BuildNodes(resourceSet.Resources, options);
+        var nodes = BuildNodes(resourceSet.Resources);
         var nodeIndex = new Dictionary<string, GraphNode>();
         foreach (var node in nodes)
         {
@@ -31,10 +60,10 @@ public sealed class GraphBuilder(IEnumerable<IGroupingStrategy> groupingStrategi
         }
 
         // Build edges (only for nodes that exist in the graph)
-        var edges = BuildEdges(resourceSet.Relationships, nodeIndex, options);
+        var edges = BuildEdges(resourceSet.Relationships, nodeIndex);
 
         // Filter isolated nodes if configured
-        if (!options.ShowIsolatedNodes)
+        if (!showIsolatedNodes)
         {
             var connectedNodeIds = new HashSet<string>();
             foreach (var edge in edges)
@@ -49,10 +78,10 @@ public sealed class GraphBuilder(IEnumerable<IGroupingStrategy> groupingStrategi
         // Apply grouping strategies
         var map = RelationMap.Map(nodes, edges);
         var (finalNodes, finalEdges, groups) = 
-            ApplyGrouping(groupingStrategies, map, options);
+            ApplyGrouping(groupingStrategies, map);
 
         // Build metadata
-        var metadata = BuildMetadata(resourceSet, finalNodes, options);
+        var metadata = BuildMetadata(resourceSet, finalNodes);
 
         return new InfraGraph
         {
@@ -63,20 +92,16 @@ public sealed class GraphBuilder(IEnumerable<IGroupingStrategy> groupingStrategi
         };
     }
 
-    private static List<GraphNode> BuildNodes(List<AwsResource> resources, DiagramOptions options)
+    private static List<GraphNode> BuildNodes(List<AwsResource> resources)
     {
-        return (from resource in resources
-            where options.IncludeTypes.Count <= 0 || options.IncludeTypes.Contains(resource.Type)
-            where !options.ExcludeTypes.Contains(resource.Type)
-            where options.IncludeRegions.Count <= 0 || string.IsNullOrEmpty(resource.Region) || options.IncludeRegions.Contains(resource.Region)
+        return (
+            from resource in resources
             select new GraphNode
             {
                 Id = resource.Id,
                 Label = resource.DisplayName,
                 ResourceType = resource.Type,
                 Service = resource.ServiceName,
-                Width = options.DefaultNodeWidth,
-                Height = options.DefaultNodeHeight,
                 Data = new Dictionary<string, object>
                 {
                     ["arn"] = resource.Arn ?? resource.Id,
@@ -89,8 +114,7 @@ public sealed class GraphBuilder(IEnumerable<IGroupingStrategy> groupingStrategi
 
     private static List<GraphEdge> BuildEdges(
         List<ResourceRelationship> relationships,
-        Dictionary<string, GraphNode> nodeIndex,
-        DiagramOptions options) // TODO: options?
+        Dictionary<string, GraphNode> nodeIndex)
     {
         var edges = new List<GraphEdge>();
         var seenEdges = new HashSet<string>();
@@ -119,15 +143,12 @@ public sealed class GraphBuilder(IEnumerable<IGroupingStrategy> groupingStrategi
     }
 
     private static (List<GraphNode>, List<GraphEdge>, List<NodeGroup>) ApplyGrouping(
-        IEnumerable<IGroupingStrategy> groupingStrategies, RelationMap map, DiagramOptions options)
+        IEnumerable<IGroupingStrategy> groupingStrategies, RelationMap map)
     {
         var allGroups = new List<NodeGroup>();
 
         foreach (var strategy in groupingStrategies)
         {
-            if (!options.GroupingStrategies.Contains(strategy.GroupingType))
-                continue;
-            
             var groups = strategy.GroupNodes(map).ToList();
             allGroups.AddRange(groups);
 
@@ -229,8 +250,7 @@ public sealed class GraphBuilder(IEnumerable<IGroupingStrategy> groupingStrategi
 
     private static GraphMetadata BuildMetadata(
         ResourceSet resourceSet,
-        List<GraphNode> includedNodes,
-        DiagramOptions options) // TODO: options?
+        List<GraphNode> includedNodes)
     {
         return new GraphMetadata
         {

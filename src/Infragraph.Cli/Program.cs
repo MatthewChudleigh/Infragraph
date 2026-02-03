@@ -1,8 +1,12 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
 using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
+using Infragraph.Common.Abstractions;
+using Infragraph.Common.Configuration;
 using Infragraph.Common.Models.Domain;
 using Infragraph.Common.Models.Former2;
+using Infragraph.Core.Graph;
 using Infragraph.Core.Modeling;
 using Infragraph.Core.Parsing;
 using Infragraph.Core.Relationships;
@@ -16,36 +20,109 @@ Console.CancelKeyPress += (sender, eventArgs) =>
 
 // var dir = @"C:\dev\Infragraph\tmp\archive"; // args[0];
 var dirOut = @"C:\dev\Infragraph\tmp\"; // args[0];
-var pathOut = Path.Combine(dirOut, "resources.json");
+var pathIn = Path.Combine(dirOut, "resources.json");
+var pathOut = Path.Combine(dirOut, "resources-no-net.json");
+var networkingOut = Path.Combine(dirOut, "networking.json");
+
+var accounts = JsonSerializer.Deserialize<Dictionary<string, string>>(
+    File.ReadAllText(Path.Combine(dirOut, "accounts.json")),
+    Former2JsonContext.Default.DictionaryStringString)
+    ?? new Dictionary<string, string>();
 
 var filterTypes = new List<string> {
     "cloudwatch.logstream"
 };
 
-await ResourceActions.ImportAwsResources(pathOut, filterTypes, cts.Token);
+var (resourceSet, former2Resources)  = 
+    await ResourceActions.ImportAwsResources(pathIn, accounts, filterTypes, cts.Token);
+
+foreach (var x in resourceSet.Resources.GroupBy(r => r.Type)
+             .ToDictionary(kv => kv.Key, kv => kv.Count())
+             .OrderBy(kv => kv.Key))
+{
+    Console.WriteLine($"{x.Key}: {x.Value}");
+}
+
+var networkingResources = ResourceActions.MapNetworking(resourceSet);
+
+var graph = GraphBuilder.BuildGraph(
+    GraphBuilder.DefaultGroupingStrategies, 
+    networkingResources,
+    false);
+
+var networkingIds = new HashSet<string>(networkingResources.Resources.Select(r => r.Id));
+{
+    await using var outStream = File.Open(networkingOut, FileMode.Create);
+    await Former2JsonContext.SerializeAsync(outStream, 
+        networkingResources.Resources
+            .Select(r => former2Resources[r.Id])
+            .ToList(), cts.Token);
+}
+
+{
+    await using var outStream = File.Open(pathOut, FileMode.Create);
+    await Former2JsonContext.SerializeAsync(outStream, 
+        resourceSet.Resources
+            .Where(r => !networkingIds.Contains(r.Id))
+            .Select(r => former2Resources[r.Id])
+            .ToList(), cts.Token);
+}
 
 public static class ResourceActions
 {
-    public static async Task ImportAwsResources(string path, List<string> filterTypes, CancellationToken cancel)
+    public static ResourceSet MapNetworking(ResourceSet resourceSet)
+    {
+        var networkTypes = new HashSet<string>([
+            SupportedResourceTypes.Vpc,
+            SupportedResourceTypes.VpcEndpoint,
+            SupportedResourceTypes.Subnet,
+            SupportedResourceTypes.Route,
+            SupportedResourceTypes.RouteTable,
+            SupportedResourceTypes.SubnetRouteTableAssociation,
+            SupportedResourceTypes.TransitGateway,
+            SupportedResourceTypes.TransitGatewayAttachment,
+            SupportedResourceTypes.TransitGatewayRoute,
+            SupportedResourceTypes.TransitGatewayRouteTable,
+            SupportedResourceTypes.TransitGatewayRouteTableAssociation,
+            SupportedResourceTypes.TransitGatewayRouteTablePropagation,
+            SupportedResourceTypes.NatGateway,
+            SupportedResourceTypes.InternetGateway,
+            SupportedResourceTypes.RamResourceShare,
+        ]);
+        
+        var tgw = resourceSet.Resources
+            .Where(r => networkTypes.Contains(r.Type))
+            .ToList();
+        return new ResourceSet()
+        {
+            Resources = tgw.ToList(),
+            Relationships = resourceSet.Relationships,
+            ResourceIndex = resourceSet.ResourceIndex
+        };
+    }
+   
+    public static async Task<(ResourceSet, Dictionary<string, Former2Resource>)> ImportAwsResources(
+        string path, Dictionary<string, string> accounts, List<string> filterTypes, CancellationToken cancel)
     {
         var allRelationships = AllRelationships.All();
         var resourceFactory = new ResourceModelFactory(allRelationships);
         await using var stream = File.Open(path, FileMode.Open);
 
-        var former2Resources = new List<Former2Resource>();
-        await foreach (var result in Former2Parser.ParseStreamAsync(stream, filterTypes, cancel))
+        var former2Resources = new Dictionary<string, Former2Resource>();
+        await foreach (var result in Former2Parser.ParseStreamAsync(stream, accounts, filterTypes, cancel))
         {
             if (result.Result(out var resource, out _))
             {
-                former2Resources.Add(resource);
+                former2Resources[resource.Id] = resource;
             }
         }
         
-        var resourceSet = resourceFactory.CreateResourceSet(former2Resources);
-        Console.WriteLine(resourceSet.Relationships.Count);
+        var resourceSet = resourceFactory.CreateResourceSet(former2Resources.Values);
+        return (resourceSet, former2Resources);
     } 
     
-    public static async Task MergeAsync(string dir, string pathOut, List<string> filterTypes, CancellationToken cancel)
+    public static async Task MergeAsync(string dir, string pathOut, 
+        Dictionary<string, string> accounts, List<string> filterTypes, CancellationToken cancel)
     {
         var okTypes = new Dictionary<string, int>();
         var invalidTypes = new List<string>();
@@ -55,7 +132,7 @@ public static class ResourceActions
         {
             var account = Path.GetFileNameWithoutExtension(path);
             Console.WriteLine($"Processing {account}");
-            await ImportResources(cancel, path, filterTypes, okTypes, account, resources, invalidTypes);
+            await ImportResources(cancel, path, accounts, filterTypes, okTypes, account, resources, invalidTypes);
         }
 
         if (invalidTypes.Count > 0)
@@ -80,11 +157,13 @@ public static class ResourceActions
         }
     }
 
-    private static async Task ImportResources(CancellationToken cancel, string path, List<string> filterTypes, 
-        Dictionary<string, int> okTypes, string account, List<Former2Resource> resources, List<string> invalidTypes)
+    private static async Task ImportResources(CancellationToken cancel, string path, 
+        Dictionary<string, string> accounts, List<string> filterTypes, 
+        Dictionary<string, int> okTypes, string account, 
+        List<Former2Resource> resources, List<string> invalidTypes)
     {
         await using var stream = File.Open(path, FileMode.Open);
-        await foreach (var result in Former2Parser.ParseStreamAsync(stream, filterTypes, cancel))
+        await foreach (var result in Former2Parser.ParseStreamAsync(stream, accounts, filterTypes, cancellationToken: cancel))
         {
             if (result.Result(out var resource, out var invalid))
             {

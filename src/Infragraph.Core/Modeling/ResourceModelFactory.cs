@@ -24,13 +24,13 @@ public sealed class ResourceModelFactory(IEnumerable<IRelationshipExtractor> ext
     private static readonly Dictionary<string, IResourceTypeHandler> Handlers = new(StringComparer.OrdinalIgnoreCase)
     {
         // VPC/Networking
-        ["ec2.vpc"] = new VpcHandler(),
-        ["ec2.subnet"] = new SubnetHandler(),
-        ["ec2.securitygroup"] = new SecurityGroupHandler(),
-        ["ec2.routetable"] = new RouteTableHandler(),
-        ["ec2.internetgateway"] = new InternetGatewayHandler(),
-        ["ec2.natgateway"] = new NatGatewayHandler(),
-        ["ec2.transitgateway"] = new TransitGatewayHandler(),
+        [SupportedResourceTypes.Vpc] = new VpcHandler(),
+        [SupportedResourceTypes.Subnet] = new SubnetHandler(),
+        [SupportedResourceTypes.SecurityGroup] = new SecurityGroupHandler(),
+        [SupportedResourceTypes.RouteTable] = new RouteTableHandler(),
+        [SupportedResourceTypes.InternetGateway] = new InternetGatewayHandler(),
+        [SupportedResourceTypes.NatGateway] = new NatGatewayHandler(),
+        [SupportedResourceTypes.TransitGateway] = new TransitGatewayHandler(),
 
         // Compute
         ["ec2.instance"] = new Ec2InstanceHandler(),

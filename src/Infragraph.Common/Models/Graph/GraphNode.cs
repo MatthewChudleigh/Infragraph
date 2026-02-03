@@ -34,14 +34,4 @@ public sealed class GraphNode
     /// Additional data to pass to the frontend.
     /// </summary>
     public Dictionary<string, object> Data { get; init; } = [];
-
-    /// <summary>
-    /// Node width (optional, for layout).
-    /// </summary>
-    public double? Width { get; set; }
-
-    /// <summary>
-    /// Node height (optional, for layout).
-    /// </summary>
-    public double? Height { get; set; }
 }

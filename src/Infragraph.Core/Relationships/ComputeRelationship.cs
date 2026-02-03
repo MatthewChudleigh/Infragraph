@@ -8,8 +8,7 @@ namespace Infragraph.Core.Relationships;
 /// </summary>
 public sealed class ComputeRelationship : IRelationshipExtractor
 {
-    public IEnumerable<string> SupportedResourceTypes =>
-        ["ec2.instance", "ec2.volume", "lambda.function"];
+    public IEnumerable<string> SupportedResourceTypes => AllRelationships.ComputeResourceTypes;
 
     public IEnumerable<ResourceRelationship> ExtractRelationships(
         IReadOnlyDictionary<string, AwsResource> index,

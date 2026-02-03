@@ -8,13 +8,7 @@ namespace Infragraph.Core.Relationships;
 /// </summary>
 public sealed class ElbRelationship : IRelationshipExtractor
 {
-    public IEnumerable<string> SupportedResourceTypes =>
-        [
-            Common.Configuration.SupportedResourceTypes.LoadBalancer, 
-            "elbv2.targetgroup", 
-            "elbv2.listener", 
-            "elbv2.loadbalancerlistener"
-        ];
+    public IEnumerable<string> SupportedResourceTypes => AllRelationships.ElbResourceTypes;
 
     public IEnumerable<ResourceRelationship> ExtractRelationships(
         IReadOnlyDictionary<string, AwsResource> index,

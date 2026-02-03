@@ -107,8 +107,8 @@ public sealed class ReactFlowRenderer : IRenderer<ReactFlowDiagram>
             },
             ParentId = node.ParentId,
             Extent = node.ParentId != null ? "parent" : null,
-            Width = node.Width ?? options.DefaultNodeWidth,
-            Height = node.Height ?? options.DefaultNodeHeight,
+            Width = options.DefaultNodeWidth,
+            Height = options.DefaultNodeHeight,
             Style = new Dictionary<string, object>
             {
                 ["borderColor"] = color,

@@ -65,6 +65,24 @@ public static class SupportedServiceTypes
 /// </summary>
 public static class SupportedResourceTypes
 {
+    public const string RamResourceShare = "ram.resourceshare"; // TODO
+
+    public const string TransitGateway = "ec2.transitgateway";
+    public const string TransitGatewayAttachment = "ec2.transitgatewayattachment"; // TODO
+    public const string TransitGatewayRoute = "ec2.transitgatewayroute"; // TODO
+    public const string TransitGatewayRouteTable = "ec2.transitgatewayroutetable"; // TODO
+    public const string TransitGatewayRouteTableAssociation = "ec2.transitgatewayroutetableassociation"; // TODO
+    public const string TransitGatewayRouteTablePropagation = "ec2.transitgatewayroutetablepropogation"; // TODO
+    public const string Route = "ec2.route"; // TODO
+    public const string RouteTable = "ec2.routetable";
+    public const string SubnetRouteTableAssociation = "ec2.subnetroutetableassociation"; // TODO
+    public const string InternetGateway = "ec2.internetgateway";
+    public const string NatGateway = "ec2.natgateway";
+    public const string Subnet = "ec2.subnet";
+    public const string Vpc = "ec2.vpc";
+    public const string VpcEndpoint = "ec2.vpcendpoint";
+    public const string SecurityGroup = "ec2.securitygroup";
+
     public const string EcsCluster = "ecs.cluster";
     public const string EcsService = "ecs.service";
     public const string EcsTaskDefinition = "ecs.taskdefinition";
@@ -76,14 +94,14 @@ public static class SupportedResourceTypes
     public static readonly IReadOnlyDictionary<string, ResourceTypeInfo> All = new Dictionary<string, ResourceTypeInfo>
     {
         // VPC/Networking
-        ["ec2.vpc"] = new() { Type = "ec2.vpc", DisplayName = "VPC", Service = SupportedServiceTypes.Ec2, Category = "Networking", CanContain = true, Color = "#FF9900" },
-        ["ec2.subnet"] = new() { Type = "ec2.subnet", DisplayName = "Subnet", Service = SupportedServiceTypes.Ec2, Category = "Networking", CanContain = true, Color = "#FF9900" },
-        ["ec2.securitygroup"] = new() { Type = "ec2.securitygroup", DisplayName = "Security Group", Service = SupportedServiceTypes.Ec2, Category = "Networking", Color = "#DD4B39" },
-        ["ec2.routetable"] = new() { Type = "ec2.routetable", DisplayName = "Route Table", Service = SupportedServiceTypes.Ec2, Category = "Networking", Color = "#FF9900" },
-        ["ec2.internetgateway"] = new() { Type = "ec2.internetgateway", DisplayName = "Internet Gateway", Service = SupportedServiceTypes.Ec2, Category = "Networking", Color = "#8C4FFF" },
-        ["ec2.natgateway"] = new() { Type = "ec2.natgateway", DisplayName = "NAT Gateway", Service = SupportedServiceTypes.Ec2, Category = "Networking", Color = "#8C4FFF" },
-        ["ec2.transitgateway"] = new() { Type = "ec2.transitgateway", DisplayName = "Transit Gateway", Service = SupportedServiceTypes.Ec2, Category = "Networking", Color = "#8C4FFF" },
-        ["ec2.vpcendpoint"] = new() { Type = "ec2.vpcendpoint", DisplayName = "VPC Endpoint", Service = SupportedServiceTypes.Ec2, Category = "Networking", Color = "#8C4FFF" },
+        [Vpc] = new() { Type = Vpc, DisplayName = "VPC", Service = SupportedServiceTypes.Ec2, Category = "Networking", CanContain = true, Color = "#FF9900" },
+        [Subnet] = new() { Type = Subnet, DisplayName = "Subnet", Service = SupportedServiceTypes.Ec2, Category = "Networking", CanContain = true, Color = "#FF9900" },
+        [SecurityGroup] = new() { Type = SecurityGroup, DisplayName = "Security Group", Service = SupportedServiceTypes.Ec2, Category = "Networking", Color = "#DD4B39" },
+        [RouteTable] = new() { Type = RouteTable, DisplayName = "Route Table", Service = SupportedServiceTypes.Ec2, Category = "Networking", Color = "#FF9900" },
+        [InternetGateway] = new() { Type = InternetGateway, DisplayName = "Internet Gateway", Service = SupportedServiceTypes.Ec2, Category = "Networking", Color = "#8C4FFF" },
+        [NatGateway] = new() { Type = NatGateway, DisplayName = "NAT Gateway", Service = SupportedServiceTypes.Ec2, Category = "Networking", Color = "#8C4FFF" },
+        [TransitGateway] = new() { Type = TransitGateway, DisplayName = "Transit Gateway", Service = SupportedServiceTypes.Ec2, Category = "Networking", Color = "#8C4FFF" },
+        [VpcEndpoint] = new() { Type = VpcEndpoint, DisplayName = "VPC Endpoint", Service = SupportedServiceTypes.Ec2, Category = "Networking", Color = "#8C4FFF" },
 
         // Compute
         ["ec2.instance"] = new() { Type = "ec2.instance", DisplayName = "EC2 Instance", Service = SupportedServiceTypes.Ec2, Category = "Compute", Color = "#FF9900" },

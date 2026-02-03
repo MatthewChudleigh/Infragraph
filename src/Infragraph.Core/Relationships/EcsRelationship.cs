@@ -8,11 +8,7 @@ namespace Infragraph.Core.Relationships;
 /// </summary>
 public sealed class EcsRelationship : IRelationshipExtractor
 {
-    public IEnumerable<string> SupportedResourceTypes => [
-        Common.Configuration.SupportedResourceTypes.EcsService, 
-        Common.Configuration.SupportedResourceTypes.EcsCluster, 
-        Common.Configuration.SupportedResourceTypes.EcsTaskDefinition
-    ];
+    public IEnumerable<string> SupportedResourceTypes => AllRelationships.EcsResourceTypes;
 
     public IEnumerable<ResourceRelationship> ExtractRelationships(
         IReadOnlyDictionary<string, AwsResource> index,

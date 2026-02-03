@@ -10,10 +10,10 @@ using System.Text.Json.Serialization;
 /// </summary>
 [JsonSerializable(typeof(Former2Resource))]
 [JsonSerializable(typeof(List<Former2Resource>))]
+[JsonSerializable(typeof(Dictionary<string, string>))]
 public partial class Former2JsonContext : JsonSerializerContext
 {
-    public static async Task SerializeAsync(Stream stream, List<Former2Resource> resources,
-        CancellationToken cancel)
+    public static async Task SerializeAsync(Stream stream, List<Former2Resource> resources, CancellationToken cancel)
     {
         var options = new JsonSerializerOptions
         {

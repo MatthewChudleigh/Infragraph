@@ -8,8 +8,7 @@ namespace Infragraph.Core.Relationships;
 /// </summary>
 public sealed class IamRelationship : IRelationshipExtractor
 {
-    public IEnumerable<string> SupportedResourceTypes =>
-        ["iam.role", "iam.instanceprofile", "iam.user"];
+    public IEnumerable<string> SupportedResourceTypes => AllRelationships.IamResourceTypes;
 
     public IEnumerable<ResourceRelationship> ExtractRelationships(
         IReadOnlyDictionary<string, AwsResource> index,

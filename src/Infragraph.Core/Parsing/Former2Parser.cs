@@ -15,11 +15,11 @@ public sealed class Former2Parser : IResourceParser
     /// <inheritdoc />
     public IAsyncEnumerable<IResourceParser.ParseResult> ParseAsync(Stream json, CancellationToken cancellationToken = default)
     {
-        return ParseStreamAsync(json, [], cancellationToken);
+        return ParseStreamAsync(json, [], [], cancellationToken: cancellationToken);
     }
     
-    public static async IAsyncEnumerable<IResourceParser.ParseResult> ParseStreamAsync(
-        Stream json, ICollection<string> filterTypes,
+    public static async IAsyncEnumerable<IResourceParser.ParseResult> ParseStreamAsync(Stream json,
+        Dictionary<string, string> accounts, ICollection<string> filterTypes,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         // Former2 exports are JSON arrays of resources
@@ -34,7 +34,7 @@ public sealed class Former2Parser : IResourceParser
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var resource = ParseResource(element);
+            var resource = ParseResource(accounts, element);
             if (resource.Result(out var r, out _) &&
                 filterTypes.Contains(r.Type))
             {
@@ -45,7 +45,7 @@ public sealed class Former2Parser : IResourceParser
         }
     }
 
-    private static IResourceParser.ParseResult ParseResource(JsonElement element)
+    private static IResourceParser.ParseResult ParseResource(Dictionary<string, string> accounts, JsonElement element)
     {
         if (!element.TryGetProperty("type", out var typeElement))
         {
@@ -90,7 +90,12 @@ public sealed class Former2Parser : IResourceParser
         }
 
         string? account = null;
-        if (element.TryGetProperty("account", out var accountElement))
+        if ((data?.TryGetProperty("OwnerId", out var ownerId) ?? false)
+            && accounts.TryGetValue(ownerId.ToString(), out var ownerAccount))
+        {
+            account = ownerAccount;
+        }
+        else if (element.TryGetProperty("account", out var accountElement))
         {
             account = accountElement.GetString();
         }

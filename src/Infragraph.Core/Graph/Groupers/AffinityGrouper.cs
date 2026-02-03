@@ -1,4 +1,5 @@
 using Infragraph.Common.Abstractions;
+using Infragraph.Common.Configuration;
 using Infragraph.Common.Models.Domain;
 using Infragraph.Common.Models.Graph;
 
@@ -32,7 +33,7 @@ public sealed class AffinityGrouper : IGroupingStrategy
         ICollection<GraphNode> nodes,
         Dictionary<string, List<string>> usedBy)
     {
-        var securityGroups = nodes.Where(n => n.ResourceType == "ec2.securitygroup").ToList();
+        var securityGroups = nodes.Where(n => n.ResourceType == SupportedResourceTypes.SecurityGroup).ToList();
 
         foreach (var sg in securityGroups)
         {
