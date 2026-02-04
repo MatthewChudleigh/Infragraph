@@ -88,6 +88,11 @@ public static class SupportedResourceTypes
     public const string EcsService = "ecs.service";
     public const string EcsTaskDefinition = "ecs.taskdefinition";
     
+    public const string CloudfrontDistribution = "cloudfront.distribution"; // TODO
+    public const string CloudfrontFunction = "cloudfront.function"; // TODO
+    public const string CloudfrontOac = "cloudfront.originaccesscontrol"; // TODO
+    public const string CloudfrontOai = "cloudfront.originaccessidentity"; // TODO
+    
     /// <summary>
     /// All supported resource types.
     /// </summary>

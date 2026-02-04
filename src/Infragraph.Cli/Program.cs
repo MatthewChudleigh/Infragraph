@@ -23,6 +23,7 @@ var dirOut = @"C:\dev\Infragraph\tmp\"; // args[0];
 var pathIn = Path.Combine(dirOut, "resources.json");
 var pathOut = Path.Combine(dirOut, "resources-no-net.json");
 var networkingOut = Path.Combine(dirOut, "networking.json");
+var cloudfrontOut = Path.Combine(dirOut, "cloudfront.json");
 
 var accounts = JsonSerializer.Deserialize<Dictionary<string, string>>(
     File.ReadAllText(Path.Combine(dirOut, "accounts.json")),
@@ -44,6 +45,7 @@ foreach (var x in resourceSet.Resources.GroupBy(r => r.Type)
 }
 
 var networkingResources = ResourceActions.MapNetworking(resourceSet);
+var cloudfrontResources = ResourceActions.MapCloudfront(resourceSet);
 
 var graph = GraphBuilder.BuildGraph(
     GraphBuilder.DefaultGroupingStrategies, 
@@ -59,17 +61,36 @@ var networkingIds = new HashSet<string>(networkingResources.Resources.Select(r =
             .ToList(), cts.Token);
 }
 
-{
-    await using var outStream = File.Open(pathOut, FileMode.Create);
-    await Former2JsonContext.SerializeAsync(outStream, 
-        resourceSet.Resources
-            .Where(r => !networkingIds.Contains(r.Id))
-            .Select(r => former2Resources[r.Id])
-            .ToList(), cts.Token);
-}
+await ResourceActions.WriteOut(pathOut, resourceSet, former2Resources, [], cts.Token);
+await ResourceActions.WriteOut(networkingOut, networkingResources, former2Resources, [], cts.Token);
+await ResourceActions.WriteOut(cloudfrontOut, cloudfrontResources, former2Resources, [], cts.Token);
 
 public static class ResourceActions
 {
+    public static async Task WriteOut(string pathOut, ResourceSet resourceSet, 
+        Dictionary<string, Former2Resource> former2Resources,
+        HashSet<string> ids, CancellationToken cancel)
+    {
+        await using var outStream = File.Open(pathOut, FileMode.Create);
+        await Former2JsonContext.SerializeAsync(outStream, 
+            resourceSet.Resources
+                .Where(r => !ids.Contains(r.Id))
+                .Select(r => former2Resources[r.Id])
+                .ToList(), cancel);
+    }
+    
+    public static ResourceSet MapCloudfront(ResourceSet resourceSet)
+    {
+        var cfTypes = new HashSet<string>([
+            SupportedResourceTypes.CloudfrontDistribution,
+            SupportedResourceTypes.CloudfrontFunction,
+            SupportedResourceTypes.CloudfrontOac,
+            SupportedResourceTypes.CloudfrontOai,
+        ]);
+ 
+        return Map(resourceSet, cfTypes);
+    }
+    
     public static ResourceSet MapNetworking(ResourceSet resourceSet)
     {
         var networkTypes = new HashSet<string>([
@@ -92,13 +113,18 @@ public static class ResourceActions
             SupportedResourceTypes.EcsCluster,
             SupportedResourceTypes.EcsService,
         ]);
-        
-        var tgw = resourceSet.Resources
-            .Where(r => networkTypes.Contains(r.Type))
+ 
+        return Map(resourceSet, networkTypes);
+    }
+
+    private static ResourceSet Map(ResourceSet resourceSet, HashSet<string> resourceTypes)
+    {
+        var resources = resourceSet.Resources
+            .Where(r => resourceTypes.Contains(r.Type))
             .ToList();
         return new ResourceSet()
         {
-            Resources = tgw.ToList(),
+            Resources = resources.ToList(),
             Relationships = resourceSet.Relationships,
             ResourceIndex = resourceSet.ResourceIndex
         };
