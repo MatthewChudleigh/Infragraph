@@ -31,8 +31,8 @@ public sealed class ReactFlowRenderer : IRenderer<ReactFlowDiagram>
     {
         // Create group nodes first (they need to be in the nodes array for React Flow)
         var nodes = graph.Groups
-            .OrderBy(g => g.GroupType == "account" ? 0 : 1)
-            .Select(group => CreateGroupNode(group, options))
+            .OrderBy(g => g.GroupType == IGroupingStrategy.GroupType.Account ? 0 : 1)
+            .Select(CreateGroupNode)
             .ToList();
         // Create resource nodes
         nodes.AddRange(graph.Nodes.Select(node => CreateResourceNode(node, options)));
@@ -69,7 +69,7 @@ public sealed class ReactFlowRenderer : IRenderer<ReactFlowDiagram>
         };
     }
 
-    private static ReactFlowNode CreateGroupNode(NodeGroup group, DiagramOptions options)
+    private static ReactFlowNode CreateGroupNode(NodeGroup group)
     {
         return new ReactFlowNode
         {

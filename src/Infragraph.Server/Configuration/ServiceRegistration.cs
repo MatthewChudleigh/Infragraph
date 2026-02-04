@@ -42,6 +42,7 @@ public static class ServiceRegistration
         services.AddSingleton<IGroupingStrategy, ServiceGrouper>();
         services.AddSingleton<IGroupingStrategy, AffinityGrouper>();
         services.AddSingleton<IGroupingStrategy, IamGrouper>();
+        services.AddSingleton<IGroupingStrategy, NetworkGrouper>();
 
         // Graph builder
         services.AddSingleton<IGraphBuilder, GraphBuilder>();

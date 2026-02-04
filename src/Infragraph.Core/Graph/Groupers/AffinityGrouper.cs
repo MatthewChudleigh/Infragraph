@@ -11,7 +11,7 @@ namespace Infragraph.Core.Graph.Groupers;
 /// </summary>
 public sealed class AffinityGrouper : IGroupingStrategy
 {
-    public string GroupingType => "affinity";
+    public string GroupingType => IGroupingStrategy.GroupType.Affinity;
     public int Priority => 3; // Applied after Service grouping
 
     public IEnumerable<NodeGroup> GroupNodes(RelationMap map)
@@ -44,8 +44,8 @@ public sealed class AffinityGrouper : IGroupingStrategy
             {
                 yield return new NodeGroup
                 {
-                    GroupType = "affinity-hint",
-                    Id = $"affinity-sg-{sg.Id}",
+                    GroupType = IGroupingStrategy.GroupType.Affinity,
+                    Id = $"{IGroupingStrategy.GroupType.Affinity}-sg-{sg.Id}",
                     Label = sg.Label,
                     NodeIds = [sg.Id],
                     Data = new Dictionary<string, object>
@@ -73,7 +73,7 @@ public sealed class AffinityGrouper : IGroupingStrategy
             {
                 yield return new NodeGroup
                 {
-                    GroupType = "affinity-hint",
+                    GroupType = IGroupingStrategy.GroupType.Affinity,
                     Id = $"affinity-profile-{profile.Id}",
                     Label = profile.Label,
                     NodeIds = [profile.Id],
@@ -102,7 +102,7 @@ public sealed class AffinityGrouper : IGroupingStrategy
             {
                 yield return new NodeGroup
                 {
-                    GroupType = "affinity-hint",
+                    GroupType = IGroupingStrategy.GroupType.Affinity,
                     Id = $"affinity-volume-{volume.Id}",
                     Label = volume.Label,
                     NodeIds = [volume.Id],

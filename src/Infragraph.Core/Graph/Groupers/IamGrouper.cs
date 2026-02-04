@@ -9,7 +9,7 @@ namespace Infragraph.Core.Graph.Groupers;
 /// </summary>
 public sealed class IamGrouper : IGroupingStrategy
 {
-    public string GroupingType => "iam";
+    public string GroupingType => IGroupingStrategy.GroupType.Iam;
     public int Priority => 4; // Applied after Affinity grouping
 
     public IEnumerable<NodeGroup> GroupNodes(RelationMap map)

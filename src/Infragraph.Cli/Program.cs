@@ -88,6 +88,9 @@ public static class ResourceActions
             SupportedResourceTypes.NatGateway,
             SupportedResourceTypes.InternetGateway,
             SupportedResourceTypes.RamResourceShare,
+            SupportedResourceTypes.LoadBalancer,
+            SupportedResourceTypes.EcsCluster,
+            SupportedResourceTypes.EcsService,
         ]);
         
         var tgw = resourceSet.Resources

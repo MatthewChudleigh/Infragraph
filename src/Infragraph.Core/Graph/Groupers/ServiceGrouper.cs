@@ -10,7 +10,7 @@ namespace Infragraph.Core.Graph.Groupers;
 /// </summary>
 public sealed class ServiceGrouper : IGroupingStrategy
 {
-    public string GroupingType => "service";
+    public string GroupingType => IGroupingStrategy.GroupType.Service;
     public int Priority => 2; // Applied after VPC grouping
 
     public IEnumerable<NodeGroup> GroupNodes(RelationMap map)

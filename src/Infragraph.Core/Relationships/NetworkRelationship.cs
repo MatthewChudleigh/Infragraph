@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Infragraph.Common.Abstractions;
 using Infragraph.Common.Models.Domain;
 
@@ -122,32 +123,42 @@ public sealed class NetworkRelationship : IRelationshipExtractor
         // Routes to gateways
         foreach (var route in rt.Routes)
         {
-            if (!string.IsNullOrEmpty(route.GatewayId) && route.GatewayId != "local")
+            if (TryAdd(route.TransitGatewayId, route.DestinationCidrBlock, out var tgw))
             {
-                if (index.TryGetValue(route.GatewayId, out var gw))
-                {
-                    yield return new ResourceRelationship
-                    {
-                        SourceId = rt.Id,
-                        TargetId = gw.Id,
-                        RelationshipType = RelationshipType.RoutesTo,
-                        Label = route.DestinationCidrBlock
-                    };
-                }
+                yield return tgw;
             }
 
-            if (string.IsNullOrEmpty(route.NatGatewayId)) continue;
-            
-            if (index.TryGetValue(route.NatGatewayId, out var nat))
+            if (route.GatewayId != "local" && 
+                TryAdd(route.GatewayId, route.DestinationCidrBlock, out var gateway))
             {
-                yield return new ResourceRelationship
-                {
-                    SourceId = rt.Id,
-                    TargetId = nat.Id,
-                    RelationshipType = RelationshipType.RoutesTo,
-                    Label = route.DestinationCidrBlock
-                };
+                yield return gateway;
             }
+
+            if (TryAdd(route.NatGatewayId, route.DestinationCidrBlock, out var natGateway))
+            {
+                yield return natGateway;
+            }
+        }
+
+        yield break;
+        
+        bool TryAdd(string? id, string? label, 
+            [NotNullWhen(true)] out ResourceRelationship? relationship)
+        {
+            relationship = null;
+            if (string.IsNullOrEmpty(id)) return false;
+            if (!index.TryGetValue(id, out var target)) return false;
+            
+            relationship = new ResourceRelationship
+            {
+                SourceId = rt.Id,
+                TargetId = target.Id,
+                RelationshipType = RelationshipType.RoutesTo,
+                Label = label
+            };
+
+            return true;
+
         }
     }
 

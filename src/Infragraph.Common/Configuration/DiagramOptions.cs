@@ -1,3 +1,5 @@
+using Infragraph.Common.Abstractions;
+
 namespace Infragraph.Common.Configuration;
 
 /// <summary>
@@ -23,7 +25,14 @@ public sealed record DiagramOptions
     /// <summary>
     /// Grouping strategies to apply (e.g., "account", "vpc", "service", "affinity", "iam").
     /// </summary>
-    public List<string> GroupingStrategies { get; init; } = ["account", "vpc", "service", "affinity", "iam"];
+    public List<string> GroupingStrategies { get; init; } = [
+        IGroupingStrategy.GroupType.Account, 
+        IGroupingStrategy.GroupType.Vpc, 
+        IGroupingStrategy.GroupType.Service, 
+        IGroupingStrategy.GroupType.Affinity, 
+        IGroupingStrategy.GroupType.Iam,
+        IGroupingStrategy.GroupType.Network
+    ];
 
     /// <summary>
     /// Whether to show isolated nodes (nodes with no relationships).

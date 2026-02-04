@@ -44,6 +44,7 @@ public sealed class GraphBuilder(IEnumerable<IGroupingStrategy> groupingStrategi
         new ServiceGrouper(),
         new AffinityGrouper(),
         new IamGrouper(),
+        new NetworkGrouper()
     ];
     
     public static InfraGraph BuildGraph(
@@ -153,7 +154,7 @@ public sealed class GraphBuilder(IEnumerable<IGroupingStrategy> groupingStrategi
             allGroups.AddRange(groups);
 
             // Update node parent IDs based on grouping (skip affinity hints for now)
-            foreach (var group in groups.Where(g => g.GroupType != "affinity-hint"))
+            foreach (var group in groups.Where(g => g.GroupType != IGroupingStrategy.GroupType.Affinity))
             {
                 foreach (var node in group.NodeIds.Select(nodeId => map.Nodes.FirstOrDefault(n => n.Id == nodeId)))
                 {   // Set the node parent if it doesn't already have a parent
@@ -166,7 +167,7 @@ public sealed class GraphBuilder(IEnumerable<IGroupingStrategy> groupingStrategi
         }
 
         // Process affinity hints: move nodes into the same group as their target
-        var affinityHints = allGroups.Where(g => g.GroupType == "affinity-hint").ToList();
+        var affinityHints = allGroups.Where(g => g.GroupType == IGroupingStrategy.GroupType.Affinity).ToList();
         foreach (var hint in affinityHints)
         {
             if (!hint.Data.TryGetValue("affinityTarget", out var targetObj) || targetObj is not string targetId)
@@ -199,16 +200,18 @@ public sealed class GraphBuilder(IEnumerable<IGroupingStrategy> groupingStrategi
 
         {
             // Filter out affinity hint groups from final output
-            var groups = allGroups.Where(g => g.GroupType != "affinity-hint").ToList();
+            var groups = allGroups.Where(g => g.GroupType != IGroupingStrategy.GroupType.Affinity).ToList();
 
             // Assign orphan nodes to their account groups
-            var accountGroups = groups.Where(g => g.GroupType == "account").ToDictionary(g => g.Id);
+            var accountGroups = 
+                groups.Where(g => g.GroupType == IGroupingStrategy.GroupType.Account)
+                    .ToDictionary(g => g.Id);
             foreach (var node in map.Nodes.Where(n => n.ParentId == null))
             {
-                var account = node.Data.TryGetValue("account", out var acc) ? acc?.ToString() : null;
+                var account = node.Data.TryGetValue(IGroupingStrategy.GroupType.Account, out var acc) ? acc.ToString() : null;
                 if (string.IsNullOrWhiteSpace(account)) continue;
 
-                var accountGroupId = $"group-account-{account}";
+                var accountGroupId = AccountGrouper.GetAccountGroupId(account);
                 if (!accountGroups.TryGetValue(accountGroupId, out var accountGroup)) continue;
 
                 node.ParentId = accountGroupId;
@@ -219,7 +222,7 @@ public sealed class GraphBuilder(IEnumerable<IGroupingStrategy> groupingStrategi
             }
 
             // Build ChildGroupIds for account groups based on groups with account as parent
-            foreach (var group in groups.Where(g => g.GroupType != "account" && g.ParentId != null))
+            foreach (var group in groups.Where(g => g.GroupType != IGroupingStrategy.GroupType.Account && g.ParentId != null))
             {
                 if (!accountGroups.TryGetValue(group.ParentId!, out var accountGroup)) continue;
 

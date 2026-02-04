@@ -9,6 +9,16 @@ using Models.Graph;
 /// </summary>
 public interface IGroupingStrategy
 {
+    public static class GroupType
+    {
+        public const string Account = "account";
+        public const string Vpc = "vpc";
+        public const string Service = "service";
+        public const string Affinity = "affinity";
+        public const string Iam = "iam";
+        public const string Network = "network";
+    }
+    
     /// <summary>
     /// Groups nodes based on the strategy's criteria.
     /// </summary>

@@ -9,7 +9,7 @@ namespace Infragraph.Core.Graph.Groupers;
 /// </summary>
 public sealed class AccountGrouper : IGroupingStrategy
 {
-    public string GroupingType => "account";
+    public string GroupingType => IGroupingStrategy.GroupType.Account;
     public int Priority => 0; // Applied first - creates top-level account groups
 
     /// <summary>
@@ -21,7 +21,7 @@ public sealed class AccountGrouper : IGroupingStrategy
     {
         // Get all unique accounts from nodes
         var accounts = map.Nodes
-            .Select(n => n.Data.TryGetValue("account", out var acc) ? acc?.ToString() : null)
+            .Select(n => n.Data.TryGetValue(IGroupingStrategy.GroupType.Account, out var acc) ? acc?.ToString() : null)
             .Where(a => !string.IsNullOrWhiteSpace(a))
             .Distinct()
             .OrderBy(a => a)
@@ -36,7 +36,7 @@ public sealed class AccountGrouper : IGroupingStrategy
             {
                 Id = GetAccountGroupId(account),
                 Label = account,
-                GroupType = "account",
+                GroupType = IGroupingStrategy.GroupType.Account,
                 ParentId = null, // Top-level group
                 NodeIds = [], // Nodes will be assigned by GraphBuilder after other groupers run
                 Data = new Dictionary<string, object>

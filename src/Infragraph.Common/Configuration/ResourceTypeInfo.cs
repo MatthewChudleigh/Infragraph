@@ -82,11 +82,11 @@ public static class SupportedResourceTypes
     public const string Vpc = "ec2.vpc";
     public const string VpcEndpoint = "ec2.vpcendpoint";
     public const string SecurityGroup = "ec2.securitygroup";
+    public const string LoadBalancer = "elbv2.loadbalancer";
 
     public const string EcsCluster = "ecs.cluster";
     public const string EcsService = "ecs.service";
     public const string EcsTaskDefinition = "ecs.taskdefinition";
-    public const string LoadBalancer = "elbv2.loadbalancer";
     
     /// <summary>
     /// All supported resource types.
