@@ -6,10 +6,12 @@ using Infragraph.Common.Abstractions;
 using Infragraph.Common.Configuration;
 using Infragraph.Common.Models.Domain;
 using Infragraph.Common.Models.Former2;
+using Infragraph.Common.Models.ReactFlow;
 using Infragraph.Core.Graph;
 using Infragraph.Core.Modeling;
 using Infragraph.Core.Parsing;
 using Infragraph.Core.Relationships;
+using Infragraph.Rendering.ReactFlow;
 
 var cts = new CancellationTokenSource();
 Console.CancelKeyPress += (sender, eventArgs) =>
@@ -24,6 +26,7 @@ var pathIn = Path.Combine(dirOut, "resources.json");
 var pathOut = Path.Combine(dirOut, "resources-no-net.json");
 var networkingOut = Path.Combine(dirOut, "networking.json");
 var cloudfrontOut = Path.Combine(dirOut, "cloudfront.json");
+var networkingFlowOut = Path.Combine(dirOut, "networking-flow.json");
 
 var accounts = JsonSerializer.Deserialize<Dictionary<string, string>>(
     File.ReadAllText(Path.Combine(dirOut, "accounts.json")),
@@ -47,7 +50,7 @@ foreach (var x in resourceSet.Resources.GroupBy(r => r.Type)
 var networkingResources = ResourceActions.MapNetworking(resourceSet);
 var cloudfrontResources = ResourceActions.MapCloudfront(resourceSet);
 
-var graph = GraphBuilder.BuildGraph(
+var networkingGraph = GraphBuilder.BuildGraph(
     GraphBuilder.DefaultGroupingStrategies, 
     networkingResources,
     false);
@@ -65,8 +68,19 @@ await ResourceActions.WriteOut(pathOut, resourceSet, former2Resources, [], cts.T
 await ResourceActions.WriteOut(networkingOut, networkingResources, former2Resources, [], cts.Token);
 await ResourceActions.WriteOut(cloudfrontOut, cloudfrontResources, former2Resources, [], cts.Token);
 
+var reactFlow = new ReactFlowRenderer();
+var networkingDiagram = reactFlow.Render(networkingGraph, DiagramOptions.Default);
+
+await ResourceActions.WriteOut(networkingFlowOut, networkingDiagram, cts.Token);
+
 public static class ResourceActions
 {
+    public static async Task WriteOut(string pathOut, ReactFlowDiagram reactFlowDiagram, CancellationToken cancel)
+    {
+        await using var outStream = File.Open(pathOut, FileMode.Create);
+        await Former2JsonContext.SerializeAsync(outStream, reactFlowDiagram, cancel);
+    }
+    
     public static async Task WriteOut(string pathOut, ResourceSet resourceSet, 
         Dictionary<string, Former2Resource> former2Resources,
         HashSet<string> ids, CancellationToken cancel)

@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization.Metadata;
+using Infragraph.Common.Models.ReactFlow;
 
 namespace Infragraph.Common.Models.Former2;
 
@@ -8,11 +9,22 @@ using System.Text.Json.Serialization;
 /// <summary>
 /// Represents a raw resource from a Former2 JSON export.
 /// </summary>
+[JsonSerializable(typeof(ReactFlowDiagram))]
 [JsonSerializable(typeof(Former2Resource))]
 [JsonSerializable(typeof(List<Former2Resource>))]
 [JsonSerializable(typeof(Dictionary<string, string>))]
 public partial class Former2JsonContext : JsonSerializerContext
 {
+    public static async Task SerializeAsync(Stream stream, ReactFlowDiagram diagram, CancellationToken cancel)
+    {
+        var options = new JsonSerializerOptions
+        {
+            TypeInfoResolver = JsonTypeInfoResolver.Combine(Default),
+            WriteIndented = true,
+            NewLine = "\n",
+        };
+        await JsonSerializer.SerializeAsync(stream, diagram, options, cancel);
+    }
     public static async Task SerializeAsync(Stream stream, List<Former2Resource> resources, CancellationToken cancel)
     {
         var options = new JsonSerializerOptions

@@ -12,6 +12,7 @@
     <ItemGroup>
       <ProjectReference Include="..\Infragraph.Common\Infragraph.Common.csproj" />
       <ProjectReference Include="..\Infragraph.Core\Infragraph.Core.csproj" />
+      <ProjectReference Include="..\Infragraph.Rendering\Infragraph.Rendering.csproj" />
     </ItemGroup>
 
 </Project>
